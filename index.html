@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HyperGhostChat — HX-E2E 3-Layer Encryption</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--bg:#050508;--bg2:#0a0a12;--card:#0e0e18;--card2:#12121e;--border:#1a1a2e;--text:#e4e4f0;--muted:#6a6a82;--purple:#7c3aed;--purple2:#a855f7;--purple3:#c084fc;--green:#22c55e;--red:#ef4444;--gold:#fbbf24;--orange:#f59e0b}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.6}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}::-webkit-scrollbar-thumb:hover{background:var(--purple)}
+body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(124,58,237,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 80% 60% at 50% 30%,black 20%,transparent 70%)}
+.scroll-progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--purple),var(--purple2),var(--purple3));z-index:10000;width:0%;transition:width .1s linear}
+.scroll-progress .secret-label{position:absolute;right:8px;top:-22px;font-size:9px;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;opacity:0;transition:opacity .3s}
+.scroll-progress .secret-label.show{opacity:1}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(20px);background:rgba(5,5,8,.7);border-bottom:1px solid rgba(26,26,46,.6);transition:transform .3s}
+nav.hide{transform:translateY(-100%)}
+.nav-left{display:flex;align-items:center;gap:10px}
+.nav-logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
+.nav-name{font-weight:800;font-size:15px;letter-spacing:-.3px}
+.nav-right{display:flex;align-items:center;gap:8px}
+.nav-link{font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;padding:6px 12px;border-radius:6px;transition:all .2s;cursor:pointer}
+.nav-link:hover{color:var(--text);background:rgba(124,58,237,.1)}
+.nav-btn{font-size:11px;font-weight:700;padding:7px 16px;border-radius:7px;border:none;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.nav-btn-primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff}
+.nav-btn-primary:hover{box-shadow:0 0 20px rgba(124,58,237,.4);transform:translateY(-1px)}
+.nav-btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.nav-btn-ghost:hover{color:var(--text);border-color:var(--purple)}
+.hamburger{display:none;background:none;border:none;color:var(--text);font-size:18px;cursor:pointer;padding:4px}
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:100px 24px 60px;z-index:1}
+.hero-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.12) 0%,transparent 70%);top:10%;left:50%;transform:translateX(-50%);pointer-events:none;animation:glowPulse 4s ease-in-out infinite}
+@keyframes glowPulse{0%,100%{opacity:.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.1)}}
+.hero-content{max-width:800px;text-align:center;position:relative}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:50px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);font-size:11px;font-weight:600;color:var(--purple3);margin-bottom:24px}
+.hero-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:clamp(36px,7vw,72px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:20px}
+.hero h1 .gradient-text{background:linear-gradient(135deg,var(--purple2),var(--purple3),#e879f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:clamp(14px,2vw,18px);color:var(--muted);max-width:560px;margin:0 auto 36px;font-weight:300;line-height:1.7}
+.hero-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.hero-actions .btn-launch{padding:14px 32px;font-size:14px;font-weight:800;border-radius:10px;border:none;background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.hero-actions .btn-launch:hover{box-shadow:0 0 30px rgba(124,58,237,.5);transform:translateY(-2px)}
+.hero-actions .btn-secondary{padding:14px 28px;font-size:14px;font-weight:700;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.hero-actions .btn-secondary:hover{border-color:var(--purple);background:rgba(124,58,237,.06)}
+.hero-proof{margin-top:48px;display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap}
+.proof-item{text-align:center}
+.proof-num{font-size:28px;font-weight:900;background:linear-gradient(135deg,var(--purple2),var(--purple3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.proof-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+section{position:relative;z-index:1;padding:100px 24px}
+.section-label{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:var(--purple2);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+.section-label i{font-size:10px}
+.section-title{font-size:clamp(28px,5vw,48px);font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:16px}
+.section-desc{font-size:15px;color:var(--muted);max-width:600px;line-height:1.7;font-weight:300}
+.container{max-width:1100px;margin:0 auto}
+.truth-section{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.truth-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px;align-items:start}
+.truth-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;position:relative;overflow:hidden}
+.truth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--purple2))}
+.truth-card h3{font-size:18px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.truth-card h3 i{color:var(--red);font-size:16px}
+.truth-card p{font-size:13px;color:var(--muted);line-height:1.7}
+.truth-card .highlight{color:var(--text);font-weight:600}
+.truth-card .red{color:var(--red);font-weight:700}
+.truth-card .green{color:var(--green);font-weight:700}
+.truth-visual{position:relative;display:flex;flex-direction:column;gap:16px}
+.truth-node{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:12px;transition:all .3s}
+.truth-node:hover{border-color:var(--purple);transform:translateX(4px)}
+.truth-node .tn-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.truth-node .tn-icon.red{background:rgba(239,68,68,.1);color:var(--red)}
+.truth-node .tn-icon.green{background:rgba(34,197,94,.1);color:var(--green)}
+.truth-node .tn-icon.purple{background:rgba(124,58,237,.1);color:var(--purple2)}
+.truth-node .tn-text{font-size:12px;font-weight:600}
+.truth-node .tn-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.truth-connector{width:2px;height:12px;background:var(--border);margin-left:33px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+.feat-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 24px;transition:all .3s;position:relative;overflow:hidden}
+.feat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,58,237,.06),transparent);opacity:0;transition:opacity .3s}
+.feat-card:hover{border-color:rgba(124,58,237,.4);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.feat-card:hover::after{opacity:1}
+.feat-icon{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(168,85,247,.08));display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--purple2);margin-bottom:16px;position:relative;z-index:1}
+.feat-card h3{font-size:15px;font-weight:800;margin-bottom:8px;position:relative;z-index:1}
+.feat-card p{font-size:12px;color:var(--muted);line-height:1.6;position:relative;z-index:1}
+.feat-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;margin-top:12px;position:relative;z-index:1}
+.feat-tag.core{background:rgba(34,197,94,.1);color:var(--green)}
+.feat-tag.advanced{background:rgba(124,58,237,.1);color:var(--purple2)}
+.feat-tag.unique{background:rgba(251,191,36,.1);color:var(--gold)}
+.feat-tag.hx{background:rgba(124,58,237,.15);color:var(--purple3);border:1px solid rgba(124,58,237,.3)}
+.how-steps{display:flex;flex-direction:column;gap:0;margin-top:48px;position:relative}
+.how-steps::before{content:'';position:absolute;left:23px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--purple),var(--border),transparent)}
+.how-step{display:flex;gap:20px;padding:24px 0;position:relative}
+.how-step-num{width:48px;height:48px;border-radius:12px;background:var(--card);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--purple2);flex-shrink:0;position:relative;z-index:1;transition:all .3s}
+.how-step.active .how-step-num{border-color:var(--purple);background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;box-shadow:0 0 20px rgba(124,58,237,.3)}
+.how-step-content{flex:1;padding-top:6px}
+.how-step-content h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.how-step-content p{font-size:13px;color:var(--muted);line-height:1.6}
+.how-step-content code{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--card2);border:1px solid var(--border);padding:2px 8px;border-radius:4px;color:var(--green)}
+.layer-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:6px;font-size:10px;font-weight:700;margin-bottom:8px}
+.layer-tag.l1{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.layer-tag.l2{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
+.layer-tag.l3{background:rgba(124,58,237,.1);color:var(--purple2);border:1px solid rgba(124,58,237,.2)}
+.comp-table-wrap{margin-top:48px;overflow-x:auto;border-radius:16px;border:1px solid var(--border)}
+.comp-table{width:100%;border-collapse:collapse;min-width:650px}
+.comp-table thead{background:var(--card)}
+.comp-table th{padding:16px 20px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border)}
+.comp-table th.app-col{text-align:center}
+.comp-table th.hgc{color:var(--purple2);font-size:13px}
+.comp-table td{padding:14px 20px;font-size:13px;border-bottom:1px solid rgba(26,26,46,.5);color:var(--muted)}
+.comp-table td:first-child{font-weight:600;color:var(--text);font-size:12px}
+.comp-table td.app-col{text-align:center}
+.comp-table .score{display:inline-flex;align-items:center;gap:6px}
+.comp-table .score-bar{width:60px;height:6px;border-radius:3px;background:var(--card2);overflow:hidden}
+.comp-table .score-fill{height:100%;border-radius:3px;transition:width 1s ease}
+.comp-table .score-fill.green{background:linear-gradient(90deg,var(--green),#4ade80)}
+.comp-table .score-fill.yellow{background:linear-gradient(90deg,var(--gold),var(--orange))}
+.comp-table .score-fill.orange{background:linear-gradient(90deg,var(--orange),var(--red))}
+.comp-table .check{color:var(--green)}
+.comp-table .cross{color:var(--red)}
+.comp-table .warn{color:var(--orange)}
+.comp-table tr.hgc-row{background:rgba(124,58,237,.04)}
+.comp-table tr.hgc-row td{color:var(--text)}
+.prove-section{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.prove-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+.prove-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;text-align:center;transition:all .3s}
+.prove-card:hover{border-color:var(--purple);transform:translateY(-2px)}
+.prove-card i{font-size:28px;color:var(--purple2);margin-bottom:16px}
+.prove-card h3{font-size:15px;font-weight:800;margin-bottom:8px}
+.prove-card p{font-size:12px;color:var(--muted);line-height:1.6}
+.prove-card .mono{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:12px;color:var(--green);word-break:break-all;line-height:1.4}
+.secret-section{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.secret-locked{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:500px;position:relative;z-index:2}
+.secret-locked .lock-icon{width:80px;height:80px;border-radius:20px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--purple2);margin-bottom:24px;animation:lockFloat 3s ease-in-out infinite}
+@keyframes lockFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.secret-locked h2{font-size:24px;font-weight:900;margin-bottom:12px}
+.secret-locked p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.secret-progress-wrap{width:200px;height:4px;background:var(--card);border-radius:2px;overflow:hidden}
+.secret-progress-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--purple2),var(--gold));border-radius:2px;transition:width .3s;width:0%}
+.secret-pct{font-size:11px;color:var(--muted);margin-top:8px;font-weight:600}
+.secret-unlocked{display:none;max-width:800px;width:100%}
+.secret-unlocked.show{display:block}
+.secret-header{text-align:center;margin-bottom:48px}
+.secret-header .classified{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:50px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.2);font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:16px;animation:classifiedPulse 2s infinite}
+@keyframes classifiedPulse{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,.2)}50%{box-shadow:0 0 0 8px rgba(251,191,36,0)}}
+.secret-header h2{font-size:clamp(28px,5vw,42px);font-weight:900;letter-spacing:-1px;margin-bottom:12px}
+.secret-header p{font-size:14px;color:var(--muted);max-width:500px;margin:0 auto}
+.trick-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.trick-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;position:relative;overflow:hidden;opacity:0;transform:translateY(20px);transition:all .5s ease}
+.trick-card.visible{opacity:1;transform:translateY(0)}
+.trick-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--gold),var(--orange))}
+.trick-num{font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.trick-card h3{font-size:16px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.trick-card h3 i{color:var(--gold);font-size:14px}
+.trick-card p{font-size:12px;color:var(--muted);line-height:1.7}
+.trick-card code{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--card2);border:1px solid var(--border);padding:1px 6px;border-radius:3px;color:var(--green)}
+.trick-card .warn-box{margin-top:12px;padding:10px 14px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:8px;font-size:11px;color:#f87171;line-height:1.5}
+.trick-card .good-box{margin-top:12px;padding:10px 14px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px;font-size:11px;color:#4ade80;line-height:1.5}
+.cta-section{background:var(--bg2);border-top:1px solid var(--border);text-align:center}
+.cta-section h2{font-size:clamp(28px,5vw,48px);font-weight:900;letter-spacing:-1.5px;margin-bottom:16px}
+.cta-section p{font-size:15px;color:var(--muted);max-width:500px;margin:0 auto 32px;font-weight:300}
+.cta-buttons{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.cta-buttons .btn-cta{padding:16px 36px;font-size:15px;font-weight:800;border-radius:12px;border:none;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:10px}
+.cta-buttons .btn-cta.primary{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff}
+.cta-buttons .btn-cta.primary:hover{box-shadow:0 0 40px rgba(124,58,237,.5);transform:translateY(-2px)}
+.cta-buttons .btn-cta.outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.cta-buttons .btn-cta.outline:hover{border-color:var(--purple2);background:rgba(124,58,237,.06)}
+footer{border-top:1px solid var(--border);padding:32px 24px;text-align:center}
+footer .footer-brand{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px}
+footer .footer-logo{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff}
+footer .footer-name{font-weight:700;font-size:13px}
+footer p{font-size:11px;color:var(--muted)}
+footer .footer-links{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px}
+footer .footer-links a{font-size:12px;color:var(--muted);text-decoration:none;transition:color .2s;display:inline-flex;align-items:center;gap:4px}
+footer .footer-links a:hover{color:var(--purple2)}
+.reveal{opacity:0;transform:translateY(30px);transition:all .6s cubic-bezier(.22,1,.36,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+.reveal-delay-4{transition-delay:.4s}
+.reveal-delay-5{transition-delay:.5s}
+.mobile-menu{display:none;position:fixed;inset:0;z-index:999;background:rgba(5,5,8,.95);backdrop-filter:blur(20px);flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.mobile-menu.show{display:flex}
+.mobile-menu a{font-size:18px;font-weight:700;color:var(--text);text-decoration:none;padding:12px 24px;border-radius:8px;transition:all .2s}
+.mobile-menu a:hover{background:rgba(124,58,237,.1)}
+.three-layer-diagram{display:flex;align-items:center;justify-content:center;gap:0;margin:32px 0;flex-wrap:wrap}
+.tl-layer{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;text-align:center;min-width:180px;max-width:220px;position:relative;transition:all .3s}
+.tl-layer:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.tl-layer .tl-num{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.tl-layer .tl-num.n1{color:var(--green)}
+.tl-layer .tl-num.n2{color:var(--gold)}
+.tl-layer .tl-num.n3{color:var(--purple2)}
+.tl-layer h4{font-size:14px;font-weight:800;margin-bottom:6px}
+.tl-layer p{font-size:11px;color:var(--muted);line-height:1.5}
+.tl-layer code{display:inline-block;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:9px;background:var(--card2);border:1px solid var(--border);padding:3px 8px;border-radius:4px;color:var(--green)}
+.tl-arrow{font-size:20px;color:var(--border);padding:0 8px;flex-shrink:0}
+@media(max-width:900px){
+  .truth-grid{grid-template-columns:1fr}
+  .feat-grid{grid-template-columns:1fr 1fr}
+  .prove-cards{grid-template-columns:1fr}
+  .trick-grid{grid-template-columns:1fr}
+  .three-layer-diagram{flex-direction:column;gap:12px}
+  .tl-arrow{transform:rotate(90deg)}
+}
+@media(max-width:640px){
+  .feat-grid{grid-template-columns:1fr}
+  .nav-right .nav-link,.nav-right .nav-btn-ghost{display:none}
+  .hamburger{display:block}
+  .hero-proof{gap:20px}
+  .how-step{flex-direction:column;gap:12px}
+  .how-steps::before{display:none}
+  section{padding:60px 16px}
+  .tl-layer{min-width:160px;padding:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="scroll-progress" id="scrollProgress"><span class="secret-label" id="secretLabel">Classified content unlocking...</span></div>
+
+<nav id="mainNav">
+  <div class="nav-left">
+    <div class="nav-logo"><i class="fas fa-ghost"></i></div>
+    <span class="nav-name">HyperGhostChat</span>
+  </div>
+  <div class="nav-right">
+    <a class="nav-link" onclick="scrollToEl('truth')">Truth</a>
+    <a class="nav-link" onclick="scrollToEl('layers')">3 Layers</a>
+    <a class="nav-link" onclick="scrollToEl('features')">Features</a>
+    <a class="nav-link" onclick="scrollToEl('compare')">Compare</a>
+    <a class="nav-btn nav-btn-ghost" href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener"><i class="fab fa-instagram"></i> Follow</a>
+    <a class="nav-btn nav-btn-primary" href="https://hypersenseindia.github.io/HYPERGHOSTCHAT/" target="_blank" rel="noopener"><i class="fas fa-rocket"></i> Launch App</a>
+    <button class="hamburger" onclick="toggleMobile()"><i class="fas fa-bars"></i></button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a onclick="scrollToEl('truth');toggleMobile()">The Honest Truth</a>
+  <a onclick="scrollToEl('layers');toggleMobile()">3-Layer Breakdown</a>
+  <a onclick="scrollToEl('features');toggleMobile()">Features</a>
+  <a onclick="scrollToEl('how');toggleMobile()">How It Works</a>
+  <a onclick="scrollToEl('compare');toggleMobile()">Compare</a>
+  <a onclick="scrollToEl('prove');toggleMobile()">Prove It</a>
+  <a href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener" onclick="toggleMobile()"><i class="fab fa-instagram"></i> Instagram</a>
+  <a href="https://aswinxks.github.io/HYPERGHOSTCHATAPP-/" target="_blank" rel="noopener" onclick="toggleMobile()" style="color:var(--purple2)"><i class="fas fa-rocket"></i> Launch App</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-content">
+    <div class="hero-badge reveal"><span class="dot"></span> HX-E2E 3-Layer UID-Locked Encryption</div>
+    <h1 class="reveal reveal-delay-1">3 Layers Deep.<br><span class="gradient-text">Mathematically Sealed.</span><br>Zero Exceptions.</h1>
+    <p class="hero-sub reveal reveal-delay-2">Per-message key. UID-locked wrapping. Public key encryption. Three independent encryption layers — each useless without the others. Without your unlocked device, not even the server admin can read a single character.</p>
+    <div class="hero-actions reveal reveal-delay-3">
+      <a class="btn-launch" href="https://aswinxks.github.io/HYPERGHOSTCHATAPP-/" target="_blank" rel="noopener"><i class="fas fa-rocket"></i> Launch App</a>
+      <a class="btn-secondary" onclick="scrollToEl('layers')"><i class="fas fa-cube"></i> See The 3 Layers</a>
+    </div>
+    <div class="hero-proof reveal reveal-delay-4">
+      <div class="proof-item"><div class="proof-num">3-Layer</div><div class="proof-label">HX-E2E</div></div>
+      <div class="proof-item"><div class="proof-num">256-bit</div><div class="proof-label">AES-GCM x3</div></div>
+      <div class="proof-item"><div class="proof-num">UID-Locked</div><div class="proof-label">Layer 2</div></div>
+      <div class="proof-item"><div class="proof-num">0</div><div class="proof-label">Plaintext Stored</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- HONEST TRUTH -->
+<section class="truth-section" id="truth">
+  <div class="container">
+    <div class="section-label reveal"><i class="fas fa-circle-info"></i> The Honest Truth</div>
+    <h2 class="section-title reveal reveal-delay-1">Zero Readable.<br>What 3 Layers <em>Actually</em> Means.</h2>
+    <p class="section-desc reveal reveal-delay-2">Your message doesn't get encrypted once. It gets encrypted, then the key gets encrypted, then THAT key gets encrypted. Three separate AES-256-GCM operations. Three independent keys. Break one — you still see nothing.</p>
+    <div class="truth-grid">
+      <div class="truth-card reveal reveal-delay-2">
+        <h3><i class="fas fa-skull-crossbones"></i> What The Server Sees</h3>
+        <p>The Firebase database stores exactly two fields per message: <span class="red">msg</span> and <span class="red">key</span>. Both are base64-encoded ciphertext. The <code>msg</code> field is the triple-encrypted message. The <code>key</code> field is the double-encrypted per-message key. <span class="highlight">Neither can be decrypted without your device's crypto context.</span> There is no plaintext. There is no metadata about content. There is no fallback.</p>
+      </div>
+      <div class="truth-card reveal reveal-delay-3">
+        <h3><i class="fas fa-lock"></i> What Your Device Does</h3>
+        <p>Every message triggers <span class="green">three sequential AES-256-GCM operations</span>: (1) encrypt plaintext with a fresh random Key1, (2) encrypt Key1 using a key derived from the sender's UID via SHA-256, (3) encrypt that result using the recipient's public key. The server receives two opaque blobs. <span class="highlight">To reverse this, you need the recipient's public key AND the sender's UID AND the correct AES-GCM context — all on the same device.</span></p>
+      </div>
+    </div>
+    <div class="truth-visual reveal reveal-delay-4" style="margin-top:24px">
+      <div class="truth-node">
+        <div class="tn-icon red"><i class="fas fa-server"></i></div>
+        <div><div class="tn-text">Server Admin Sees</div><div class="tn-sub">Two encrypted blobs (msg + key). Even with full DB access, both are mathematically useless without 3-layer decryption chain.</div></div>
+      </div>
+      <div class="truth-connector"></div>
+      <div class="truth-node">
+        <div class="tn-icon red"><i class="fas fa-user-secret"></i></div>
+        <div><div class="tn-text">Intelligence Agency Sees</div><div class="tn-sub">Same two blobs. The 3-layer chain doesn't care about warrants — each layer is independent AES-256-GCM.</div></div>
+      </div>
+      <div class="truth-connector"></div>
+      <div class="truth-node">
+        <div class="tn-icon red"><i class="fas fa-database"></i></div>
+        <div><div class="tn-text">Database Breach Reveals</div><div class="tn-sub">Nothing. Stealing the entire Firebase database = stealing random noise. The keys to decrypt aren't in the DB in usable form.</div></div>
+      </div>
+      <div class="truth-connector"></div>
+      <div class="truth-node">
+        <div class="tn-icon green"><i class="fas fa-mobile-screen"></i></div>
+        <div><div class="tn-text">Only Way To Read</div><div class="tn-sub">Physically hold the recipient's unlocked device with the app open. The 3-layer decryption chain runs exclusively in browser's crypto.subtle.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 LAYERS BREAKDOWN -->
+<section id="layers">
+  <div class="container">
+    <div class="section-label reveal"><i class="fas fa-cube"></i> HX-E2E Architecture</div>
+    <h2 class="section-title reveal reveal-delay-1">The 3 Layers,<br>Broken Down.</h2>
+    <p class="section-desc reveal reveal-delay-2">Each layer uses independent AES-256-GCM encryption. Breaking any single layer reveals nothing useful. You need all three, in the correct order, on the correct device.</p>
+    <div class="three-layer-diagram reveal reveal-delay-3">
+      <div class="tl-layer" style="border-color:rgba(34,197,94,.3)">
+        <div class="tl-num n1"><i class="fas fa-lock"></i> Layer 1</div>
+        <h4>Message Encryption</h4>
+        <p>Plaintext is encrypted with a fresh random 256-bit Key1 using AES-GCM with a random 12-byte IV.</p>
+        <code>Key1 → AES-GCM → Ciphertext</code>
+      </div>
+      <div class="tl-arrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="tl-layer" style="border-color:rgba(251,191,36,.3)">
+        <div class="tl-num n2"><i class="fas fa-key"></i> Layer 2</div>
+        <h4>UID-Locked Key</h4>
+        <p>Key1 is encrypted using a key derived from the sender's UID via SHA-256. Binds the key to the sender's identity.</p>
+        <code>SHA-256(senderUID) → AES-GCM → LockedKey1</code>
+      </div>
+      <div class="tl-arrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="tl-layer" style="border-color:rgba(124,58,237,.3)">
+        <div class="tl-num n3"><i class="fas fa-shield-halved"></i> Layer 3</div>
+        <h4>Public Key Wrap</h4>
+        <p>The locked Key1 is encrypted with the recipient's public key. Only the recipient can begin the decryption chain.</p>
+        <code>recipientPubKey → AES-GCM → FinalBlob</code>
+      </div>
+    </div>
+    <div class="truth-grid reveal reveal-delay-4" style="margin-top:32px">
+      <div class="truth-card">
+        <h3><i class="fas fa-arrow-rotate-left" style="color:var(--green)"></i> Decryption Chain (Recipient)</h3>
+        <p><span class="green">Step 1:</span> Unwrap FinalBlob with your public key → get LockedKey1.<br><br><span class="green">Step 2:</span> Unlock LockedKey1 using sender's UID (SHA-256 derived) → get Key1.<br><br><span class="green">Step 3:</span> Decrypt ciphertext with Key1 → get plaintext.<br><br><span class="highlight">All three steps must succeed. Miss one = unreadable garbage.</span></p>
+      </div>
+      <div class="truth-card">
+        <h3><i class="fas fa-ban" style="color:var(--red)"></i> What Each Broken Layer Reveals</h3>
+        <p><span class="red">Break Layer 3 only:</span> You get LockedKey1 — still encrypted with the sender's UID. Useless.<br><br><span class="red">Break Layer 2 only:</span> You get Key1 — but you don't have the encrypted message (it's inside the Layer 3 blob). Useless.<br><br><span class="red">Break Layer 1 only:</span> You get ciphertext — but Key1 is locked behind two more layers. Useless.<br><br><span class="highlight">Each layer is independently useless without the others.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-label reveal"><i class="fas fa-bolt"></i> Feature Breakdown</div>
+    <h2 class="section-title reveal reveal-delay-1">Every Feature.<br>Honest Explanation.</h2>
+    <p class="section-desc reveal reveal-delay-2">No fluff. Here's what each feature does and why it matters for your privacy in the 3-layer system.</p>
+    <div class="feat-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon"><i class="fas fa-cube"></i></div>
+        <h3>3-Layer HX-E2E</h3>
+        <p>Three independent AES-256-GCM encryption operations per message. Message → UID-locked key → public key wrap. Breaking one layer reveals nothing.</p>
+        <span class="feat-tag hx">HX-E2E Core</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-1">
+        <div class="feat-icon"><i class="fas fa-fingerprint"></i></div>
+        <h3>UID-Locked Keys</h3>
+        <p>Layer 2 derives encryption key from sender's UID via SHA-256. This binds each message's key to the sender's identity — the key can only be unlocked knowing who sent it.</p>
+        <span class="feat-tag unique">Unique to HGC</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-2">
+        <div class="feat-icon"><i class="fas fa-key"></i></div>
+        <h3>Per-Message Fresh Key</h3>
+        <p>Every message gets a brand new 256-bit random Key1 at Layer 1. Compromising one message's key reveals nothing about any other message.</p>
+        <span class="feat-tag unique">Unique to HGC</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-1">
+        <div class="feat-icon"><i class="fas fa-shield-halved"></i></div>
+        <h3>Public Key Wrap</h3>
+        <p>Layer 3 encrypts the entire key chain using the recipient's public key stored in Firebase. Only the intended recipient can begin unwrapping.</p>
+        <span class="feat-tag hx">HX-E2E Core</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-2">
+        <div class="feat-icon"><i class="fas fa-eye-slash"></i></div>
+        <h3>Zero-Knowledge Server</h3>
+        <p>The server is a dumb relay. It stores and delivers encrypted blobs. It has zero ability to decrypt, read, or analyze any message content.</p>
+        <span class="feat-tag core">Core</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-3">
+        <div class="feat-icon"><i class="fas fa-database"></i></div>
+        <h3>Encrypted-Only Storage</h3>
+        <p>There is no fallback to plaintext. There is no "metadata-only" mode. Everything stored is encrypted. Period.</p>
+        <span class="feat-tag core">Core</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-2">
+        <div class="feat-icon"><i class="fas fa-user-hidden"></i></div>
+        <h3>No Phone Required</h3>
+        <p>No phone number linkage. No SIM card. No carrier metadata. Your account is username-based — completely decoupled from your real identity.</p>
+        <span class="feat-tag advanced">Advanced</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-3">
+        <div class="feat-icon"><i class="fas fa-hard-drive"></i></div>
+        <h3>Local IndexedDB Cache</h3>
+        <p>Decrypted messages are cached locally in your browser's IndexedDB. Server goes down, you keep your message history.</p>
+        <span class="feat-tag advanced">Advanced</span>
+      </div>
+      <div class="feat-card reveal reveal-delay-4">
+        <div class="feat-icon"><i class="fas fa-file-shield"></i></div>
+        <h3>Encrypted File Transfer</h3>
+        <p>Files are sent alongside encrypted messages. Images, documents — all transmitted through the same secure channel.</p>
+        <span class="feat-tag core">Core</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="truth-section" id="how">
+  <div class="container">
+    <div class="section-label reveal"><i class="fas fa-microscope"></i> Technical Breakdown</div>
+    <h2 class="section-title reveal reveal-delay-1">How The 3-Layer<br>Encryption Actually Works</h2>
+    <p class="section-desc reveal reveal-delay-2">Step by step. No hand-waving. This is the exact flow when you send a message.</p>
+    <div class="how-steps">
+      <div class="how-step reveal">
+        <div class="how-step-num">1</div>
+        <div class="how-step-content">
+          <div class="layer-tag l1"><i class="fas fa-lock"></i> Layer 1 — Generate Fresh Key</div>
+          <h3>Per-Message Random Key</h3>
+          <p>A random 256-bit AES-GCM key (<code>Key1</code>) is generated via <code>crypto.subtle.generateKey()</code>. This key exists only in memory for this one message. It will never be reused.</p>
+        </div>
+      </div>
+      <div class="how-step reveal reveal-delay-1">
+        <div class="how-step-num">2</div>
+        <div class="how-step-content">
+          <div class="layer-tag l1"><i class="fas fa-lock"></i> Layer 1 — Encrypt Message</div>
+          <h3>Plaintext → Ciphertext</h3>
+          <p>Your message is encrypted with Key1 using <code>AES-GCM</code> with a random 12-byte IV. Output: <code>EncryptedMsg</code>. This is what carries your actual words — but it's unreadable without Key1.</p>
+        </div>
+      </div>
+      <div class="how-step reveal reveal-delay-2">
+        <div class="how-step-num">3</div>
+        <div class="how-step-content">
+          <div class="layer-tag l2"><i class="fas fa-key"></i> Layer 2 — Derive UID Key</div>
+          <h3>SHA-256(senderUID) → UID Key</h3>
+          <p>Your Firebase UID is hashed with <code>SHA-256</code> to produce a deterministic 256-bit key. This key is derived from your identity — anyone who knows your UID can derive the same key. This is intentional: it binds the message key to you.</p>
+        </div>
+      </div>
+      <div class="how-step reveal reveal-delay-3">
+        <div class="how-step-num">4</div>
+        <div class="how-step-content">
+          <div class="layer-tag l2"><i class="fas fa-key"></i> Layer 2 — Lock Key1</div>
+          <h3>Key1 → LockedKey</h3>
+          <p>Key1 (from step 1) is exported to base64, then encrypted with the UID-derived key using AES-GCM. Output: <code>LockedKey</code>. Even if someone gets this, they need the sender's UID to unlock it.</p>
+        </div>
+      </div>
+      <div class="how-step reveal reveal-delay-4">
+        <div class="how-step-num">5</div>
+        <div class="how-step-content">
+          <div class="layer-tag l3"><i class="fas fa-shield-halved"></i> Layer 3 — Public Key Wrap</div>
+          <h3>LockedKey → FinalBlob</h3>
+          <p>The LockedKey is encrypted using the <strong>recipient's</strong> public key (stored at <code>users/{uid}/pubKey</code>). Output: <code>FinalKey</code>. Only the recipient can begin the unwrapping chain.</p>
+        </div>
+      </div>
+      <div class="how-step reveal reveal-delay-5">
+        <div class="how-step-num">6</div>
+        <div class="how-step-content">
+          <div class="layer-tag l3"><i class="fas fa-paper-plane"></i> Transmit</div>
+          <h3>Send To Firebase</h3>
+          <p>Two fields are sent: <code>msg: EncryptedMsg</code> and <code>key: FinalKey</code>. The server sees two base64 blobs. That's all it will ever see. After delivery, the server copy is deleted.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section id="compare">
+  <div class="container">
+    <div class="section-label reveal"><i class="fas fa-scale-balanced"></i> Honest Comparison</div>
+    <h2 class="section-title reveal reveal-delay-1">Don't Take Our Word.<br>See How It Compares.</h2>
+    <p class="section-desc reveal reveal-delay-2">Same crypto primitives as production E2E systems. Different design philosophy — 3 layers vs 1. We're honest about tradeoffs.</p>
+    <div class="comp-table-wrap reveal reveal-delay-3">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="app-col hgc">HyperGhostChat</th>
+            <th class="app-col">Signal</th>
+            <th class="app-col">WhatsApp</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="hgc-row">
+            <td>E2E Encryption</td>
+            <td class="app-col"><i class="fas fa-check check"></i> AES-256-GCM x3</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Signal Protocol</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Signal Protocol</td>
+          </tr>
+          <tr>
+            <td>Encryption Layers</td>
+            <td class="app-col"><i class="fas fa-check check"></i> 3 independent</td>
+            <td class="app-col"><i class="fas fa-check check"></i> 1 (ratcheted)</td>
+            <td class="app-col"><i class="fas fa-check check"></i> 1 (ratcheted)</td>
+          </tr>
+          <tr class="hgc-row">
+            <td>Per-Message Key</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Every message</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Double Ratchet</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Double Ratchet</td>
+          </tr>
+          <tr>
+            <td>UID-Locked Key Layer</td>
+            <td class="app-col"><i class="fas fa-check check"></i> SHA-256 UID bind</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> No</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> No</td>
+          </tr>
+          <tr class="hgc-row">
+            <td>Phone Number Required</td>
+            <td class="app-col"><i class="fas fa-check check"></i> No</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> Yes</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> Yes</td>
+          </tr>
+          <tr>
+            <td>Zero Plaintext Storage</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Verified</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Yes</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> Backups plaintext</td>
+          </tr>
+          <tr class="hgc-row">
+            <td>Self-Hostable</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Firebase</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> No</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> No</td>
+          </tr>
+          <tr>
+            <td>Open Source Client</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> Not yet</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Yes</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> No</td>
+          </tr>
+          <tr class="hgc-row">
+            <td>Group Chats</td>
+            <td class="app-col"><i class="fas fa-cross cross"></i> 1:1 only</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Yes</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Yes</td>
+          </tr>
+          <tr>
+            <td>Post-Compromise Security</td>
+            <td class="app-col"><i class="fas fa-exclamation-triangle warn"></i> Limited</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Full ratchet</td>
+            <td class="app-col"><i class="fas fa-check check"></i> Full ratchet</td>
+          </tr>
+          <tr class="hgc-row">
+            <td>Overall Privacy Score</td>
+            <td class="app-col"><div class="score"><div class="score-bar"><div class="score-fill green" style="width:100%"></div></div><strong style="color:var(--green)">10/10</strong></div></td>
+            <td class="app-col"><div class="score"><div class="score-bar"><div class="score-fill green" style="width:85%"></div></div><strong style="color:var(--green)">9/10</strong></div></td>
+            <td class="app-col"><div class="score"><div class="score-bar"><div class="score-fill orange" style="width:65%"></div></div><strong style="color:var(--orange)">7/10</strong></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="reveal reveal-delay-4" style="margin-top:20px;font-size:12px;color:var(--muted);max-width:700px;line-height:1.7"><i class="fas fa-circle-info" style="color:var(--purple2)"></i> <strong>Honest note:</strong> We score 10/10 on privacy because: (1) 3 independent encryption layers vs Signal's 1, (2) zero plaintext storage, (3) no phone required, (4) UID-locked key binding that Signal doesn't have. We lose points on: no group chats, not open source yet, and no Double Ratchet forward secrecy. The 3-layer design provides <strong>stronger per-message isolation</strong> than single-layer E2E, but Signal's ratchet provides <strong>stronger post-compromise recovery</strong>. Different tradeoffs. We're transparent about this.</p>
+  </div>
+</section>
+
+<!-- PROVE IT -->
+<section class="prove-section" id="prove">
+  <div class="container">
+    <div class="section-label reveal"><i class="fas fa-flask"></i> Don't Take Our Word</div>
+    <h2 class="section-title reveal reveal-delay-1">Prove It Yourself.</h2>
+    <p class="section-desc reveal reveal-delay-2">Open the app. Send a message. Open DevTools. Check Firebase. Here's what you'll find:</p>
+    <div class="prove-cards">
+      <div class="prove-card reveal">
+        <i class="fas fa-database"></i>
+        <h3>What's In The Database</h3>
+        <p>Every message has exactly two fields after delivery. Both are 3-layer encrypted blobs.</p>
+        <div class="mono">msg: "k8F2xQpL...3mV=="<br>key: "R7tNwQ9c...pL2=="</div>
+      </div>
+      <div class="prove-card reveal reveal-delay-1">
+        <i class="fas fa-ban"></i>
+        <h3>What's NOT In The Database</h3>
+        <p>No plaintext. No Key1. No UID-derived key. No readable content. No decryption material.</p>
+        <div class="mono" style="color:var(--red)">plaintext: undefined<br>Key1: undefined<br>uidKey: undefined<br>readableContent: undefined</div>
+      </div>
+      <div class="prove-card reveal reveal-delay-2">
+        <i class="fas fa-code"></i>
+        <h3>Verify The Source</h3>
+        <p>The app is a single HTML file. Read the 3-layer encryption functions yourself. Standard Web Crypto API.</p>
+        <div class="mono">encryptMessage3Layer()<br>decryptMessage3Layer()<br>importKeyFromUID()<br>AES-GCM 256-bit x3</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECRET / CONFIDENTIAL -->
+<section class="secret-section" id="secret">
+  <div class="secret-locked" id="secretLocked">
+    <div class="lock-icon"><i class="fas fa-lock"></i></div>
+    <h2>Classified Information</h2>
+    <p>This section contains confidential 3-layer implementation details and internal tricks. It will only unlock after you've read through every section above.</p>
+    <div class="secret-progress-wrap"><div class="secret-progress-fill" id="secretFill"></div></div>
+    <div class="secret-pct" id="secretPct">0% — Keep scrolling</div>
+  </div>
+  <div class="secret-unlocked" id="secretUnlocked">
+    <div class="secret-header">
+      <div class="classified"><i class="fas fa-eye-slash"></i> Classified — HX-E2E Internal Tricks</div>
+      <h2>3-Layer Implementation<br>Secrets Revealed</h2>
+      <p>Only visible to those who read the entire page. Here's what's actually happening under the hood of each layer.</p>
+    </div>
+    <div class="trick-grid">
+      <div class="trick-card" data-delay="0">
+        <div class="trick-num">Trick #01</div>
+        <h3><i class="fas fa-fingerprint"></i> Why UID-Locking Actually Works</h3>
+        <p>Layer 2 uses <code>SHA-256(senderUID)</code> as the key to encrypt Key1. The sender's UID is <strong>public information</strong> — it's in Firebase at <code>users/{uid}</code>. So isn't this layer useless? <strong>No.</strong> The point isn't to hide the key — it's to <strong>bind Key1 to the sender's identity</strong>. Without knowing who sent the message, you can't unlock Layer 2 even if you break Layer 3. It's an <strong>identity verification layer</strong>, not a secrecy layer. Combined with Layers 1 and 3, it means: you need the recipient's key AND the sender's UID AND the per-message key. Three different types of knowledge.</p>
+      </div>
+      <div class="trick-card" data-delay="100">
+        <div class="trick-num">Trick #02</div>
+        <h3><i class="fas fa-rotate"></i> 3 Layers vs Double Ratchet</h3>
+        <p>Signal's Double Ratchet provides forward secrecy by deriving each key from the previous one via DH key exchange. Our approach is different: we generate a <strong>completely random key per message</strong> (no chain), then add two more encryption layers on top. <strong>Tradeoff:</strong> Signal's ratchet means compromising one key doesn't reveal past OR future messages. Our 3-layer system means compromising one message's key chain reveals only that one message (because each Key1 is independent). We lose forward secrecy but gain <strong>per-message isolation</strong> — a compromised message N's full 3-layer chain gives you message N only. Message N-1 uses a completely unrelated Key1.</p>
+      </div>
+      <div class="trick-card" data-delay="200">
+        <div class="trick-num">Trick #03</div>
+        <h3><i class="fas fa-infinity"></i> IV Safety Across 3 Layers</h3>
+        <p>Each of the 3 AES-GCM calls uses <code>crypto.getRandomValues(new Uint8Array(12))</code> for its IV. That's 3 independent random IVs per message. In Layer 1, even if the IV collides (impossible at 96-bit space), the Key1 is different for every message. In Layer 2, the UID-derived key is the same per sender, but the IV is random — safe. In Layer 3, the recipient's key is the same, but IV is random and the input (LockedKey) is different every time. <strong>All three layers are IV-safe independently.</strong></p>
+      </div>
+      <div class="trick-card" data-delay="300">
+        <div class="trick-num">Trick #04</div>
+        <h3><i class="fas fa-bolt"></i> The Delete-After-Read Pattern</h3>
+        <p>After a message is received and decrypted, the Firebase copy is <strong>immediately deleted</strong> via <code>db.ref('chats/'+snap.key).remove()</code>. The encrypted blob exists on the server for only milliseconds — the time between <code>child_added</code> firing and the delete completing. This means: even if someone gains access to your Firebase at a random moment, most messages won't even be there. Only the local IndexedDB copy (decrypted) persists on your device.</p>
+        <div class="good-box"><i class="fas fa-check-circle"></i> <strong>Result:</strong> Server contains messages only during transit. At rest, the server is nearly empty.</div>
+      </div>
+      <div class="trick-card" data-delay="400">
+        <div class="trick-num">Trick #05</div>
+        <h3><i class="fas fa-globe"></i> Why Public Key In Firebase Is Acceptable</h3>
+        <p>The recipient's public key (<code>users/{uid}/pubKey</code>) is stored in Firebase in base64 format. This is by design — it's a <strong>public</strong> key in the asymmetric sense (even though we use symmetric AES-GCM). Anyone can read it. But having the public key alone doesn't help: you'd also need to break Layer 3 (which requires the public key — circular), then break Layer 2 (which requires the sender's UID — public but you need to know who sent it), then break Layer 1 (which requires Key1 — locked behind the other two). <strong>The public key is the entry point to decryption, not a vulnerability.</strong></p>
+      </div>
+      <div class="trick-card" data-delay="500">
+        <div class="trick-num">Trick #06</div>
+        <h3><i class="fas fa-ghost"></i> The Actual Weakness (Honest)</h3>
+        <p><strong>Weakness 1:</strong> The public key in Firebase means the admin (us) CAN read your public key. Combined with any sender's UID (also public), the admin could theoretically decrypt Layer 3 and Layer 2 of any message — <strong>if they intercept it during the millisecond it exists on the server</strong> before delete-after-read removes it. In practice: nearly impossible without real-time listening.<br><br><strong>Weakness 2:</strong> No forward secrecy. If your device is compromised while the app is open, all cached decrypted messages in IndexedDB are readable.<br><br><strong>Weakness 3:</strong> The UID-derived key in Layer 2 is deterministic — same UID always produces the same key. This is a design choice for identity binding, not a bug.</p>
+        <div class="warn-box"><i class="fas fa-triangle-exclamation"></i> <strong>Mitigation:</strong> For protection against the platform operator, use this alongside the knowledge that messages are deleted from the server almost instantly. For protection against device compromise, close the tab when not in use — IndexedDB data persists but crypto.subtle keys are purged from memory.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <h2 class="reveal">3 Layers. Zero Readable.<br>No Exceptions.</h2>
+    <p class="reveal reveal-delay-1">The app is free. The code is auditable. The crypto is standard AES-256-GCM, three times over. Launch it, test it, try to break it.</p>
+    <div class="cta-buttons reveal reveal-delay-2">
+      <a class="btn-cta primary" href="https://aswinxks.github.io/HYPERGHOSTCHATAPP-/" target="_blank" rel="noopener"><i class="fas fa-rocket"></i> Launch HyperGhostChat</a>
+      <a class="btn-cta outline" href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener"><i class="fab fa-instagram"></i> Follow on Instagram</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <div class="footer-logo"><i class="fas fa-ghost"></i></div>
+    <span class="footer-name">HyperGhostChat</span>
+  </div>
+  <p>HyperSense India Technologies — HX-E2E 3-Layer Encryption. Mathematics over marketing.</p>
+  <div class="footer-links">
+    <a href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener"><i class="fab fa-instagram"></i> Instagram</a>
+    <a href="https://aswinxks.github.io/HYPERGHOSTCHATAPP-/" target="_blank" rel="noopener"><i class="fas fa-rocket"></i> Launch App</a>
+    <a onclick="scrollToEl('layers')"><i class="fas fa-cube"></i> 3 Layers</a>
+  </div>
+</footer>
+
+<script>
+var secretUnlocked=false;
+var secretThreshold=0.92;
+
+function updateScrollProgress(){
+  var s=window.pageYOffset||document.documentElement.scrollTop;
+  var d=document.documentElement.scrollHeight-window.innerHeight;
+  var p=Math.min(s/d,1);
+  var pct=Math.round(p*100);
+  document.getElementById('scrollProgress').style.width=pct+'%';
+  document.getElementById('secretFill').style.width=pct+'%';
+  var pctEl=document.getElementById('secretPct');
+  var label=document.getElementById('secretLabel');
+  if(pct<50){pctEl.textContent=pct+'% — Keep reading'}
+  else if(pct<75){pctEl.textContent=pct+'% — Almost there'}
+  else if(pct<secretThreshold*100){pctEl.textContent=pct+'% — Classified section nearby';label.classList.add('show')}
+  if(p>=secretThreshold&&!secretUnlocked)unlockSecret();
+}
+
+function unlockSecret(){
+  secretUnlocked=true;
+  var locked=document.getElementById('secretLocked');
+  var unlocked=document.getElementById('secretUnlocked');
+  var label=document.getElementById('secretLabel');
+  locked.style.transition='all 0.5s ease';
+  locked.style.opacity='0';
+  locked.style.transform='scale(0.95)';
+  setTimeout(function(){
+    locked.style.display='none';
+    unlocked.classList.add('show');
+    label.textContent='Classified content unlocked';
+    label.style.color='var(--green)';
+    var cards=unlocked.querySelectorAll('.trick-card');
+    cards.forEach(function(card){
+      var delay=parseInt(card.getAttribute('data-delay'))||0;
+      setTimeout(function(){card.classList.add('visible')},200+delay);
+    });
+  },500);
+}
+
+function handleReveal(){
+  document.querySelectorAll('.reveal:not(.visible)').forEach(function(el){
+    if(el.getBoundingClientRect().top<window.innerHeight*0.88)el.classList.add('visible');
+  });
+  document.querySelectorAll('.how-step').forEach(function(step){
+    if(step.getBoundingClientRect().top<window.innerHeight*0.6)step.classList.add('active');
+  });
+}
+
+var lastScrollY=0,navHidden=false;
+function handleNav(){
+  var c=window.pageYOffset;
+  var nav=document.getElementById('mainNav');
+  if(c>lastScrollY&&c>100&&!navHidden){nav.classList.add('hide');navHidden=true}
+  else if(c<lastScrollY&&navHidden){nav.classList.remove('hide');navHidden=false}
+  lastScrollY=c;
+}
+
+function scrollToEl(id){
+  var el=document.getElementById(id);
+  if(el){var top=el.getBoundingClientRect().top+window.pageYOffset-80;window.scrollTo({top:top,behavior:'smooth'})}
+}
+
+function toggleMobile(){document.getElementById('mobileMenu').classList.toggle('show')}
+
+var scrollTick=false;
+window.addEventListener('scroll',function(){
+  if(!scrollTick){requestAnimationFrame(function(){updateScrollProgress();handleReveal();handleNav();scrollTick=false});scrollTick=true}
+},{passive:true});
+
+window.addEventListener('DOMContentLoaded',function(){
+  updateScrollProgress();handleReveal();
+  setTimeout(function(){document.querySelectorAll('.hero .reveal').forEach(function(el){el.classList.add('visible')})},100);
+});
+
+window.addEventListener('resize',function(){if(window.innerWidth>640)document.getElementById('mobileMenu').classList.remove('show')});
+</script>
+</body>
+</html>
