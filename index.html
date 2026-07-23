@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HyperGhostChat — 3-Layer E2E Encrypted Messenger</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--bg:#06060c;--bg2:#0c0c18;--glass:rgba(255,255,255,.03);--glass2:rgba(255,255,255,.06);--glass3:rgba(255,255,255,.09);--glass-border:rgba(255,255,255,.08);--glass-border2:rgba(255,255,255,.12);--text:#f0f0f8;--text2:#c0c0d0;--muted:#6a6a82;--purple:#7c3aed;--purple2:#a855f7;--purple3:#c084fc;--green:#22c55e;--red:#ef4444;--gold:#fbbf24;--blue:#3b82f6;--cyan:#06b6d4;--orange:#f59e0b}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--purple) var(--bg)}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--purple);border-radius:3px}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.6}
+::selection{background:var(--purple);color:#fff}
+.ambient{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ambient-orb{position:absolute;border-radius:50%;filter:blur(120px);opacity:.12;animation:orbF 25s ease-in-out infinite}
+.ambient-orb:nth-child(1){width:600px;height:600px;background:var(--purple);top:-200px;left:-100px}
+.ambient-orb:nth-child(2){width:500px;height:500px;background:var(--purple2);bottom:-200px;right:-100px;animation-delay:-8s}
+.ambient-orb:nth-child(3){width:400px;height:400px;background:var(--blue);top:40%;left:50%;transform:translate(-50%,-50%);animation-delay:-16s;opacity:.06}
+@keyframes orbF{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,-40px) scale(1.1)}66%{transform:translate(-30px,50px) scale(.9)}}
+.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(124,58,237,.015) 1px,transparent 1px),linear-gradient(90deg,rgba(124,58,237,.015) 1px,transparent 1px);background-size:80px 80px;mask-image:radial-gradient(ellipse 60% 50% at 50% 20%,black,transparent)}
+.glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:20px}
+.glass-sm{background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--glass-border);border-radius:12px}
+.glass-strong{background:var(--glass2);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid var(--glass-border2);border-radius:24px}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:0 24px;height:68px;display:flex;align-items:center;justify-content:space-between;background:rgba(6,6,12,.75);backdrop-filter:blur(24px);border-bottom:1px solid var(--glass-border);transition:all .3s}
+nav.scrolled{background:rgba(6,6,12,.95);box-shadow:0 4px 30px rgba(0,0,0,.4)}
+.nav-left{display:flex;align-items:center;gap:12px}
+.nav-logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;box-shadow:0 0 20px rgba(124,58,237,.3)}
+.nav-name{font-weight:800;font-size:16px;letter-spacing:-.5px}
+.nav-name span{color:var(--purple2)}
+.nav-links{display:flex;align-items:center;gap:2px}
+.nav-link{font-size:12px;font-weight:500;color:var(--muted);text-decoration:none;padding:7px 12px;border-radius:8px;transition:all .2s;cursor:pointer}
+.nav-link:hover{color:var(--text);background:var(--glass)}
+.nav-cta{padding:9px 18px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.nav-cta:hover{box-shadow:0 0 25px rgba(124,58,237,.4);transform:translateY(-1px)}
+.hamburger{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:8px}
+.mobile-nav{display:none;position:fixed;inset:0;z-index:999;background:rgba(6,6,12,.98);backdrop-filter:blur(30px);flex-direction:column;align-items:center;justify-content:center;gap:6px}
+.mobile-nav.show{display:flex}
+.mobile-nav a{font-size:18px;font-weight:600;color:var(--text);text-decoration:none;padding:14px 28px;border-radius:12px;transition:all .2s}
+.mobile-nav a:hover{background:var(--glass)}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+section{position:relative;z-index:1}
+.hero{min-height:100vh;display:flex;align-items:center;padding:120px 24px 80px}
+.hero-content{max-width:700px}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:50px;background:var(--glass);border:1px solid var(--glass-border);font-size:12px;font-weight:600;color:var(--purple3);margin-bottom:28px}
+.hero-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.hero h1{font-size:clamp(38px,7.5vw,76px);font-weight:900;line-height:1.05;letter-spacing:-3px;margin-bottom:24px}
+.hero h1 .grad{background:linear-gradient(135deg,var(--purple2),var(--purple3),#e879f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:clamp(15px,2.2vw,19px);color:var(--muted);max-width:560px;margin-bottom:40px;font-weight:300;line-height:1.7}
+.hero-btns{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:56px}
+.btn-primary{padding:15px 34px;border-radius:13px;border:none;background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;font-size:14px;font-weight:700;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:9px}
+.btn-primary:hover{box-shadow:0 0 40px rgba(124,58,237,.5);transform:translateY(-2px)}
+.btn-ghost{padding:15px 30px;border-radius:13px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:9px}
+.btn-ghost:hover{border-color:var(--purple);background:rgba(124,58,237,.1)}
+.btn-outline{padding:12px 26px;border-radius:10px;border:1px solid var(--glass-border);background:transparent;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-outline:hover{border-color:var(--purple);background:rgba(124,58,237,.1)}
+.hero-stats{display:flex;gap:36px;flex-wrap:wrap}
+.stat-item .stat-num{font-size:30px;font-weight:900;background:linear-gradient(135deg,var(--purple2),var(--purple3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat-item .stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.trust-bar{padding:36px 0;border-top:1px solid var(--glass-border);border-bottom:1px solid var(--glass-border);background:rgba(255,255,255,.01)}
+.trust-items{display:flex;align-items:center;justify-content:center;gap:36px;flex-wrap:wrap}
+.trust-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:500}
+.trust-item i{font-size:16px;color:var(--green)}
+.sec{padding:110px 0}
+.sec-label{display:inline-flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--purple2);text-transform:uppercase;letter-spacing:3px;margin-bottom:14px}
+.sec-title{font-size:clamp(30px,5vw,52px);font-weight:900;letter-spacing:-2px;line-height:1.1;margin-bottom:18px}
+.sec-desc{font-size:15px;color:var(--muted);max-width:600px;line-height:1.7;font-weight:300}
+.sec-header{text-align:center;margin-bottom:56px}
+.sec-header .sec-desc{margin:0 auto}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.feat-card{padding:30px;transition:all .3s;position:relative;overflow:hidden}
+.feat-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(124,58,237,.08),transparent);opacity:0;transition:opacity .3s}
+.feat-card:hover{transform:translateY(-4px);border-color:rgba(124,58,237,.3);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.feat-card:hover::before{opacity:1}
+.feat-icon{width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(168,85,247,.08));display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--purple2);margin-bottom:18px;position:relative}
+.feat-card h3{font-size:16px;font-weight:800;margin-bottom:8px;position:relative}
+.feat-card p{font-size:12px;color:var(--muted);line-height:1.6;position:relative}
+.three-layer-diagram{display:flex;align-items:center;justify-content:center;gap:0;margin:36px 0;flex-wrap:wrap}
+.tl-layer{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:24px;text-align:center;min-width:200px;max-width:240px;transition:all .3s}
+.tl-layer:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.3)}
+.tl-layer .tl-num{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.tl-layer .tl-num.n1{color:var(--green)}
+.tl-layer .tl-num.n2{color:var(--gold)}
+.tl-layer .tl-num.n3{color:var(--purple2)}
+.tl-layer h4{font-size:15px;font-weight:800;margin-bottom:6px}
+.tl-layer p{font-size:11px;color:var(--muted);line-height:1.5}
+.tl-layer code{display:inline-block;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:9px;background:var(--glass2);border:1px solid var(--glass-border);padding:3px 8px;border-radius:4px;color:var(--green)}
+.tl-arrow{font-size:20px;color:var(--glass-border);padding:0 10px;flex-shrink:0}
+.how-steps{display:flex;flex-direction:column;gap:0;margin-top:40px;position:relative;max-width:700px;margin-left:auto;margin-right:auto}
+.how-steps::before{content:'';position:absolute;left:23px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--purple),var(--glass-border),transparent)}
+.how-step{display:flex;gap:20px;padding:20px 0;position:relative}
+.how-step-num{width:48px;height:48px;border-radius:12px;background:var(--glass);border:2px solid var(--glass-border);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:var(--purple2);flex-shrink:0;position:relative;z-index:1;transition:all .3s}
+.how-step.active .how-step-num{border-color:var(--purple);background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;box-shadow:0 0 20px rgba(124,58,237,.3)}
+.how-step-content{flex:1;padding-top:4px}
+.how-step-content h3{font-size:15px;font-weight:800;margin-bottom:5px}
+.how-step-content p{font-size:12px;color:var(--muted);line-height:1.6}
+.how-step-content code{font-family:'JetBrains Mono',monospace;font-size:10px;background:var(--glass2);border:1px solid var(--glass-border);padding:2px 7px;border-radius:4px;color:var(--green)}
+.layer-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:6px;font-size:9px;font-weight:700;margin-bottom:6px}
+.layer-tag.l1{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.layer-tag.l2{background:rgba(251,191,36,.1);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
+.layer-tag.l3{background:rgba(124,58,237,.1);color:var(--purple2);border:1px solid rgba(124,58,237,.2)}
+.truth-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:40px;align-items:start}
+.truth-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:28px;position:relative;overflow:hidden}
+.truth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),var(--purple2))}
+.truth-card h3{font-size:16px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.truth-card h3 i{color:var(--red);font-size:14px}
+.truth-card p{font-size:12px;color:var(--muted);line-height:1.7}
+.truth-card .hl{color:var(--text);font-weight:600}
+.truth-card .rd{color:var(--red);font-weight:700}
+.truth-card .gn{color:var(--green);font-weight:700}
+.truth-visual{position:relative;display:flex;flex-direction:column;gap:12px}
+.truth-node{background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;transition:all .3s}
+.truth-node:hover{border-color:var(--purple);transform:translateX(4px)}
+.truth-node .tn-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.truth-node .tn-icon.red{background:rgba(239,68,68,.1);color:var(--red)}
+.truth-node .tn-icon.green{background:rgba(34,197,94,.1);color:var(--green)}
+.truth-node .tn-icon.purple{background:rgba(124,58,237,.1);color:var(--purple2)}
+.truth-node .tn-text{font-size:11px;font-weight:600}
+.truth-node .tn-sub{font-size:9px;color:var(--muted);margin-top:2px}
+.truth-connector{width:2px;height:10px;background:var(--glass-border);margin-left:31px}
+.comp-table-wrap{margin-top:40px;overflow-x:auto;border-radius:16px;border:1px solid var(--glass-border)}
+.comp-table{width:100%;border-collapse:collapse;min-width:750px}
+.comp-table thead{background:var(--glass2)}
+.comp-table th{padding:14px 16px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--glass-border)}
+.comp-table th.app-col{text-align:center}
+.comp-table th.hgc{color:var(--purple2);font-size:12px}
+.comp-table td{padding:12px 16px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--muted)}
+.comp-table td:first-child{font-weight:600;color:var(--text);font-size:11px}
+.comp-table td.app-col{text-align:center}
+.comp-table .score{display:inline-flex;align-items:center;gap:5px}
+.comp-table .score-bar{width:50px;height:5px;border-radius:3px;background:var(--glass2);overflow:hidden}
+.comp-table .score-fill{height:100%;border-radius:3px}
+.comp-table .score-fill.green{background:linear-gradient(90deg,var(--green),#4ade80)}
+.comp-table .score-fill.yellow{background:linear-gradient(90deg,var(--gold),var(--orange))}
+.comp-table .score-fill.orange{background:linear-gradient(90deg,var(--orange),var(--red))}
+.comp-table .score-fill.blue{background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.comp-table .check{color:var(--green)}
+.comp-table .cross{color:var(--red)}
+.comp-table .warn{color:var(--orange)}
+.comp-table tr.hgc-row{background:rgba(124,58,237,.04)}
+.comp-table tr.hgc-row td{color:var(--text)}
+.ranks-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-top:48px}
+.rank-card{padding:24px 16px;text-align:center;border-radius:16px;background:var(--glass);border:1px solid var(--glass-border);transition:all .3s;position:relative}
+.rank-card.first{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.08)}
+.rank-card.first::before{content:'';position:absolute;top:-1px;left:20%;right:20%;height:2px;background:linear-gradient(90deg,transparent,var(--purple2),transparent)}
+.rank-num{font-size:36px;font-weight:900;margin-bottom:8px}
+.rank-card.first .rank-num{background:linear-gradient(135deg,var(--purple2),var(--purple3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.rank-name{font-size:14px;font-weight:700;margin-bottom:4px}
+.rank-score{font-size:12px;font-weight:600;margin-bottom:8px}
+.rank-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:9px;font-weight:700}
+.live-proof-box{max-width:700px;margin:0 auto;background:var(--glass);border:1px solid var(--glass-border);border-radius:20px;overflow:hidden}
+.lp-header{padding:16px 20px;background:rgba(124,58,237,.1);border-bottom:1px solid var(--glass-border);display:flex;align-items:center;gap:10px}
+.lp-header .lp-dot{width:10px;height:10px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;box-shadow:0 0 8px var(--green)}
+.lp-header span{font-size:13px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:2px}
+.lp-body{padding:24px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.lp-step{background:var(--glass2);border:1px solid var(--glass-border);border-radius:14px;padding:18px;text-align:center;position:relative}
+.lp-step-num{position:absolute;top:-12px;left:50%;transform:translateX(-50%);width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff}
+.lp-step h4{font-size:12px;font-weight:700;margin-bottom:8px;margin-top:4px;color:var(--text2)}
+.lp-step .lp-btn{padding:10px 16px;border-radius:8px;border:1px solid var(--glass-border);background:var(--glass);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Outfit',sans-serif;width:100%}
+.lp-step .lp-btn:hover{border-color:var(--purple);background:rgba(124,58,237,.1)}
+.lp-step .lp-btn.done{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.08);color:var(--green);cursor:default}
+.lp-step .lp-result{margin-top:10px;padding:10px;background:rgba(0,0,0,.2);border:1px solid var(--glass-border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);word-break:break-all;line-height:1.5;min-height:60px;display:flex;align-items:center;justify-content:center;text-align:center}
+.lp-step .lp-result.has-val{color:var(--green)}
+.lp-note{text-align:center;margin-top:16px;font-size:11px;color:var(--muted);line-height:1.6}
+.transit-banner{max-width:700px;margin:32px auto 0;padding:18px 24px;border-radius:14px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.15);display:flex;align-items:center;gap:14px;text-align:left}
+.transit-banner i{font-size:24px;color:var(--purple2);flex-shrink:0}
+.transit-banner h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.transit-banner p{font-size:11px;color:var(--muted);line-height:1.5}
+.prove-demo{max-width:480px;margin:0 auto}
+.chat-mockup{border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.chat-mockup-header{padding:14px 18px;background:rgba(124,58,237,.12);display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--glass-border)}
+.chat-mockup-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff}
+.chat-mockup-name{font-size:13px;font-weight:700}
+.chat-mockup-status{font-size:10px;color:var(--green)}
+.chat-mockup-body{padding:18px;min-height:220px;background:rgba(0,0,0,.2);display:flex;flex-direction:column;gap:10px}
+.mock-msg{max-width:80%;padding:10px 14px;border-radius:14px;font-size:13px}
+.mock-msg.sent{align-self:flex-end;background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;border-bottom-right-radius:4px}
+.mock-msg.received{align-self:flex-start;background:var(--glass2);border:1px solid var(--glass-border);border-bottom-left-radius:4px}
+.mock-msg .mock-time{font-size:9px;opacity:.6;margin-top:3px;text-align:right}
+.mock-encrypt{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;font-size:11px;color:var(--green);margin-top:auto}
+.db-mockup{margin-top:20px;padding:18px;border-radius:14px;background:rgba(0,0,0,.3);border:1px solid var(--glass-border)}
+.db-mockup h4{font-size:12px;font-weight:700;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.db-mockup code{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:block;line-height:1.8;word-break:break-all}
+.db-mockup code span{color:var(--purple2)}
+.download-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.download-card{padding:24px 16px;text-align:center;transition:all .3s;cursor:pointer;position:relative;overflow:hidden}
+.download-card:hover{transform:translateY(-4px);border-color:rgba(124,58,237,.3)}
+.download-card i{font-size:32px;color:var(--purple2);margin-bottom:14px;display:block}
+.download-card h4{font-size:13px;font-weight:700;margin-bottom:4px}
+.download-card p{font-size:10px;color:var(--muted)}
+.soon-badge{position:absolute;top:10px;right:10px;padding:2px 7px;border-radius:5px;font-size:8px;font-weight:700;background:rgba(251,191,36,.15);color:var(--gold);border:1px solid rgba(251,191,36,.2)}
+.os-card{padding:36px;display:flex;align-items:center;gap:36px;max-width:780px;margin:0 auto}
+.os-icon{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(168,85,247,.08));display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--purple2);flex-shrink:0}
+.os-content h3{font-size:22px;font-weight:800;margin-bottom:10px}
+.os-content p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:18px}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.about-text p{font-size:14px;color:var(--muted);line-height:1.8;margin-bottom:16px}
+.about-text strong{color:var(--text)}
+.dev-card{padding:32px;text-align:center}
+.dev-avatar{width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:44px;color:#fff;margin:0 auto 16px;box-shadow:0 0 50px rgba(124,58,237,.3)}
+.dev-card h3{font-size:20px;font-weight:800;margin-bottom:4px}
+.dev-card .dev-role{font-size:12px;color:var(--purple2);font-weight:600;margin-bottom:6px}
+.dev-card .dev-org{font-size:11px;color:var(--muted);margin-bottom:16px}
+.dev-socials{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.dev-socials a{width:38px;height:38px;border-radius:10px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:15px;transition:all .2s;text-decoration:none}
+.dev-socials a:hover{color:var(--purple2);border-color:var(--purple);background:rgba(124,58,237,.1)}
+.dev-skills{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:16px}
+.dev-skill{padding:4px 10px;border-radius:6px;font-size:9px;font-weight:600;background:var(--glass);border:1px solid var(--glass-border);color:var(--text2)}
+.donate-box{max-width:420px;margin:0 auto}
+.donate-inner{background:#fff;border:2px solid #e0e0e0;border-radius:16px;box-shadow:4px 4px 0 #ccc;padding:24px 20px 28px;text-align:center}
+.donate-inner h3{font-size:20px;color:#222;margin-bottom:2px}
+.donate-inner .donate-sub{color:#666;font-size:12px;margin-bottom:16px}
+.donate-qr-wrap{background:#fafafa;border:2px solid #e0e0e0;border-radius:12px;padding:10px;margin-bottom:16px}
+.donate-qr-wrap img{width:100%;max-width:220px;height:auto;display:block;margin:0 auto;border-radius:4px}
+.donate-row{background:#f7f7f7;border:1px solid #e0e0e0;border-radius:10px;padding:8px 14px;margin:6px 0;display:flex;justify-content:space-between;align-items:center;text-align:left}
+.donate-row .dlabel{color:#555;font-size:10px;font-weight:700;text-transform:uppercase}
+.donate-row .dvalue{color:#111;font-size:13px;font-weight:600;word-break:break-all}
+.donate-copy{background:none;border:none;color:#0066cc;cursor:pointer;font-size:15px;padding:0 4px}
+.donate-copy:hover{color:#004499}
+.donate-pay-btn{display:block;background:#0066cc;color:white;padding:13px;border-radius:40px;text-decoration:none;font-weight:700;font-size:15px;margin-top:12px;border:none;cursor:pointer;width:100%;transition:.15s;font-family:'Outfit',sans-serif}
+.donate-pay-btn:hover{background:#004d99}
+.donate-note{font-size:10px;color:#888;margin-top:10px}
+.contact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.contact-card{padding:24px;text-align:center;transition:all .3s;cursor:pointer;text-decoration:none;color:var(--text)}
+.contact-card:hover{transform:translateY(-3px);border-color:rgba(124,58,237,.3)}
+.contact-card .cc-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(168,85,247,.08));display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--purple2);margin:0 auto 14px}
+.contact-card h4{font-size:14px;font-weight:700;margin-bottom:4px}
+.contact-card p{font-size:11px;color:var(--muted)}
+.contact-card .cc-handle{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--purple2);margin-top:6px}
+.legal-content{max-width:780px;margin:0 auto}
+.legal-content h2{font-size:22px;font-weight:800;margin:28px 0 14px;padding-bottom:10px;border-bottom:1px solid var(--glass-border)}
+.legal-content h2:first-child{margin-top:0}
+.legal-content p{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:14px}
+.legal-content ul{padding-left:22px;margin-bottom:14px}
+.legal-content li{font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:6px}
+.legal-content strong{color:var(--text)}
+.legal-content a{color:var(--purple2);text-decoration:none}
+.legal-content a:hover{text-decoration:underline}
+footer{border-top:1px solid var(--glass-border);padding:50px 0 28px;background:rgba(0,0,0,.2)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:36px;margin-bottom:36px}
+.footer-brand p{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6}
+.footer-col h4{font-size:12px;font-weight:700;margin-bottom:14px;text-transform:uppercase;letter-spacing:1px}
+.footer-col a{display:block;font-size:12px;color:var(--muted);text-decoration:none;padding:3px 0;transition:color .2s;cursor:pointer}
+.footer-col a:hover{color:var(--purple2)}
+.footer-bottom{border-top:1px solid var(--glass-border);padding-top:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.footer-bottom p{font-size:11px;color:var(--muted)}
+.footer-socials{display:flex;gap:10px}
+.footer-socials a{width:34px;height:34px;border-radius:8px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;transition:all .2s;text-decoration:none}
+.footer-socials a:hover{color:var(--purple2);border-color:var(--purple)}
+.reveal{opacity:0;transform:translateY(28px);transition:all .6s cubic-bezier(.22,1,.36,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-d1{transition-delay:.1s}.reveal-d2{transition-delay:.2s}.reveal-d3{transition-delay:.3s}.reveal-d4{transition-delay:.4s}.reveal-d5{transition-delay:.5s}
+.toast-msg{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:#333;color:#fff;padding:8px 20px;border-radius:30px;font-size:13px;font-family:'Outfit',sans-serif;opacity:0;transition:all .3s;z-index:9999;pointer-events:none}
+.toast-msg.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:1024px){.feat-grid{grid-template-columns:repeat(2,1fr)}.download-grid{grid-template-columns:repeat(3,1fr)}.ranks-grid{grid-template-columns:repeat(3,1fr)}.footer-grid{grid-template-columns:1fr 1fr}.contact-grid{grid-template-columns:repeat(2,1fr)}.lp-body{grid-template-columns:1fr;gap:12px}}
+@media(max-width:768px){.nav-links{display:none}.hamburger{display:block}.feat-grid,.download-grid,.ranks-grid,.contact-grid{grid-template-columns:1fr}.about-grid,.truth-grid{grid-template-columns:1fr}.os-card{flex-direction:column;text-align:center}.footer-grid{grid-template-columns:1fr}.hero-stats{gap:20px}.trust-items{gap:16px}.sec{padding:80px 0}.three-layer-diagram{flex-direction:column;gap:12px}.tl-arrow{transform:rotate(90deg)}.how-step{flex-direction:column;gap:12px}.how-steps::before{display:none}.comp-table{min-width:600px}.comp-table th,.comp-table td{padding:10px 8px;font-size:10px}}
+</style>
+</head>
+<body>
+
+<div class="ambient"><div class="ambient-orb"></div><div class="ambient-orb"></div><div class="ambient-orb"></div></div>
+<div class="grid-overlay"></div>
+
+<nav id="mainNav">
+  <div class="nav-left">
+    <div class="nav-logo"><i class="fas fa-ghost"></i></div>
+    <div class="nav-name">Hyper<span>Ghost</span>Chat</div>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="#home">Home</a>
+    <a class="nav-link" href="#truth">Truth</a>
+    <a class="nav-link" href="#layers">3 Layers</a>
+    <a class="nav-link" href="#features">Features</a>
+    <a class="nav-link" href="#compare">Compare</a>
+    <a class="nav-link" href="#download">Download</a>
+    <a class="nav-link" href="#about">About</a>
+    <a class="nav-link" href="#contact">Contact</a>
+    <a class="nav-cta" href="https://hypersenseindia.github.io/HYPERGHOSTCHAT//" target="_blank" rel="noopener"><i class="fas fa-rocket"></i> Launch</a>
+  </div>
+  <button class="hamburger" onclick="toggleMobile()"><i class="fas fa-bars"></i></button>
+</nav>
+
+<div class="mobile-nav" id="mobileNav">
+  <a href="#home" onclick="toggleMobile()">Home</a>
+  <a href="#truth" onclick="toggleMobile()">Truth</a>
+  <a href="#layers" onclick="toggleMobile()">3 Layers</a>
+  <a href="#features" onclick="toggleMobile()">Features</a>
+  <a href="#compare" onclick="toggleMobile()">Compare</a>
+  <a href="#download" onclick="toggleMobile()">Download</a>
+  <a href="#about" onclick="toggleMobile()">About</a>
+  <a href="#contact" onclick="toggleMobile()">Contact</a>
+  <a href="#privacy" onclick="toggleMobile()">Privacy</a>
+  <a href="#terms" onclick="toggleMobile()">Terms</a>
+  <a href="#donate" onclick="toggleMobile()">Donate</a>
+  <a href="https://hypersenseindia.github.io/HYPERGHOSTCHAT//" target="_blank" rel="noopener" onclick="toggleMobile()" style="color:var(--purple2)"><i class="fas fa-rocket"></i> Launch App</a>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge reveal"><span class="dot"></span> HX-E2E 3-Layer UID-Locked Encryption</div>
+      <h1 class="reveal reveal-d1">3 Layers Deep.<br><span class="grad">Mathematically Sealed.</span><br>Zero Exceptions.</h1>
+      <p class="hero-sub reveal reveal-d2">Per-message key. UID-locked wrapping. Public key encryption. Three independent AES-256-GCM layers — each useless without the others. Without your unlocked device, nobody reads anything.</p>
+      <div class="hero-btns reveal reveal-d3">
+        <a class="btn-primary" href="https://hypersenseindia.github.io/HYPERGHOSTCHAT//" target="_blank" rel="noopener"><i class="fas fa-rocket"></i> Launch App</a>
+        <a class="btn-ghost" href="#liveproof"><i class="fas fa-flask"></i> Live Proof</a>
+      </div>
+      <div class="hero-stats reveal reveal-d4">
+        <div class="stat-item"><div class="stat-num">3-Layer</div><div class="stat-label">HX-E2E</div></div>
+        <div class="stat-item"><div class="stat-num">256-bit</div><div class="stat-label">AES-GCM x3</div></div>
+        <div class="stat-item"><div class="stat-num">0</div><div class="stat-label">Data Collected</div></div>
+        <div class="stat-item"><div class="stat-num">100%</div><div class="stat-label">Open Source</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <div class="container">
+    <div class="trust-items">
+      <div class="trust-item"><i class="fas fa-lock"></i> HTTPS / SSL Secured</div>
+      <div class="trust-item"><i class="fas fa-code"></i> Open Source</div>
+      <div class="trust-item"><i class="fas fa-shield-halved"></i> 3-Layer E2E</div>
+      <div class="trust-item"><i class="fas fa-eye-slash"></i> Zero Data Collection</div>
+      <div class="trust-item"><i class="fas fa-ban"></i> No Phone Required</div>
+      <div class="trust-item"><i class="fas fa-bug-slash"></i> XSS Protected</div>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE PROOF -->
+<section class="sec" style="background:rgba(255,255,255,.01)" id="liveproof">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-bolt"></i> Live Proof</div>
+      <h2 class="sec-title reveal reveal-d1">Don't Take Our Word.<br>Prove It In Your Browser.</h2>
+      <p class="sec-desc reveal reveal-d2">This uses the exact same Web Crypto API as HyperGhostChat. No server. No data leaves this page. Click the buttons.</p>
+    </div>
+    <div class="live-proof-box reveal reveal-d3">
+      <div class="lp-header"><div class="lp-dot"></div><span>Live — Running In Your Browser</span></div>
+      <div class="lp-body">
+        <div class="lp-step">
+          <div class="lp-step-num">1</div>
+          <h4>Generate Key</h4>
+          <button class="lp-btn" id="lpGenBtn" onclick="lpGenerate()">Generate AES-256 Key</button>
+          <div class="lp-result" id="lpKeyResult">Click to start...</div>
+        </div>
+        <div class="lp-step">
+          <div class="lp-step-num">2</div>
+          <h4>Encrypt</h4>
+          <button class="lp-btn" id="lpEncBtn" onclick="lpEncrypt()" disabled>Encrypt 'Hello'</button>
+          <div class="lp-result" id="lpEncResult">Waiting for key...</div>
+        </div>
+        <div class="lp-step">
+          <div class="lp-step-num">3</div>
+          <h4>Decrypt</h4>
+          <button class="lp-btn" id="lpDecBtn" onclick="lpDecrypt()" disabled>Decrypt CipherText</button>
+          <div class="lp-result" id="lpDecResult">Waiting...</div>
+        </div>
+      </div>
+    </div>
+    <div class="lp-note reveal reveal-d4"><i class="fas fa-info-circle" style="color:var(--purple2)"></i> Same <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--glass2);border:1px solid var(--glass-border);padding:1px 6px;border-radius:3px;color:var(--green)">crypto.subtle</code> API. No data leaves your browser. This is the exact cryptography powering every HyperGhostChat message.</div>
+
+    <!-- MESSAGE TRANSIT BANNER -->
+    <div class="transit-banner reveal reveal-d5">
+      <i class="fas fa-bolt"></i>
+      <div>
+        <h4>Message Transit: HX-E2E Encrypted + Millisecond Deletion</h4>
+        <p>When you send a message, it's encrypted with all 3 HX-E2E layers before leaving your device. The encrypted blob travels through Firebase to the recipient. Once the recipient's browser receives and decrypts it, the server copy is <strong style="color:var(--text)">immediately deleted</strong> — typically within milliseconds. The server is empty by the time anyone could even attempt to read it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROVE IT VISUAL -->
+<section class="sec" id="prove">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-eye"></i> See What Server Gets</div>
+      <h2 class="sec-title reveal reveal-d1">Send "Hello". This Is All The Server Sees.</h2>
+    </div>
+    <div class="prove-demo reveal reveal-d2">
+      <div class="chat-mockup glass-strong">
+        <div class="chat-mockup-header">
+          <div class="chat-mockup-avatar"><i class="fas fa-user"></i></div>
+          <div><div class="chat-mockup-name">Alice</div><div class="chat-mockup-status"><i class="fas fa-circle" style="font-size:7px"></i> Online · HX-E2E</div></div>
+        </div>
+        <div class="chat-mockup-body" id="proveChat">
+          <div class="mock-msg received">Hey! 👋<div class="mock-time">10:30 AM</div></div>
+          <div class="mock-msg sent">Hello<div class="mock-time">10:30 AM</div></div>
+          <div class="mock-encrypt"><i class="fas fa-cube"></i> 3-Layer HX-E2E Encrypted</div>
+        </div>
+      </div>
+      <div class="db-mockup reveal reveal-d3">
+        <h4><i class="fas fa-database"></i> Firebase Database (What Server Stores):</h4>
+        <code>msg: <span>"k8F2xQpLmN3vR7tW...yJ9z=="</span><br>key: <span>"R7tNwQ9cXmB4dKp2...fH8s=="</span></code>
+        <p style="font-size:10px;color:var(--muted);margin-top:10px"><i class="fas fa-info-circle" style="color:var(--purple2)"></i> Two encrypted blobs. No plaintext. After delivery → deleted from server within milliseconds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HONEST TRUTH -->
+<section class="sec" id="truth" style="background:var(--bg2)">
+  <div class="container">
+    <div class="sec-label reveal"><i class="fas fa-circle-info"></i> The Honest Truth</div>
+    <h2 class="sec-title reveal reveal-d1">Zero Readable.<br>What 3 Layers <em>Actually</em> Means.</h2>
+    <p class="sec-desc reveal reveal-d2">Your message gets encrypted, then the key gets encrypted, then THAT key gets encrypted. Three separate AES-256-GCM operations. Three independent keys.</p>
+    <div class="truth-grid">
+      <div class="truth-card reveal reveal-d2">
+        <h3><i class="fas fa-skull-crossbones"></i> What The Server Sees</h3>
+        <p>Firebase stores exactly two fields: <span class="rd">msg</span> and <span class="rd">key</span>. Both are base64 ciphertext. <span class="hl">Neither can be decrypted without your device's crypto context.</span></p>
+      </div>
+      <div class="truth-card reveal reveal-d3">
+        <h3><i class="fas fa-lock"></i> What Your Device Does</h3>
+        <p>Every message triggers <span class="gn">three sequential AES-256-GCM operations</span>. Server receives two opaque blobs. <span class="hl">To reverse: need recipient's key AND sender's UID AND AES-GCM context.</span></p>
+      </div>
+    </div>
+    <div class="truth-visual reveal reveal-d4" style="margin-top:24px">
+      <div class="truth-node"><div class="tn-icon red"><i class="fas fa-server"></i></div><div><div class="tn-text">Server Admin Sees</div><div class="tn-sub">Two encrypted blobs. Mathematically useless without your device.</div></div></div>
+      <div class="truth-connector"></div>
+      <div class="truth-node"><div class="tn-icon red"><i class="fas fa-user-secret"></i></div><div><div class="tn-text">Intelligence Agency Sees</div><div class="tn-sub">Same blobs. The 3-layer chain doesn't care about warrants.</div></div></div>
+      <div class="truth-connector"></div>
+      <div class="truth-node"><div class="tn-icon red"><i class="fas fa-database"></i></div><div><div class="tn-text">Database Breach Reveals</div><div class="tn-sub">Nothing. Stealing Firebase = stealing random noise.</div></div></div>
+      <div class="truth-connector"></div>
+      <div class="truth-node"><div class="tn-icon green"><i class="fas fa-mobile-screen"></i></div><div><div class="tn-text">Only Way To Read</div><div class="tn-sub">Physically hold recipient's unlocked device with app open.</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 LAYERS -->
+<section class="sec" id="layers">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-cube"></i> HX-E2E Architecture</div>
+      <h2 class="sec-title reveal reveal-d1">The 3 Layers, Broken Down.</h2>
+      <p class="sec-desc reveal reveal-d2">Each layer uses independent AES-256-GCM. Breaking any single layer reveals nothing useful.</p>
+    </div>
+    <div class="three-layer-diagram reveal reveal-d3">
+      <div class="tl-layer" style="border-color:rgba(34,197,94,.25)">
+        <div class="tl-num n1"><i class="fas fa-lock"></i> Layer 1</div>
+        <h4>Message Encryption</h4>
+        <p>Plaintext encrypted with fresh random 256-bit Key1.</p>
+        <code>Key1 → AES-GCM → Ciphertext</code>
+      </div>
+      <div class="tl-arrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="tl-layer" style="border-color:rgba(251,191,36,.25)">
+        <div class="tl-num n2"><i class="fas fa-key"></i> Layer 2</div>
+        <h4>UID-Locked Key</h4>
+        <p>Key1 encrypted using SHA-256(senderUID). Binds key to sender.</p>
+        <code>SHA-256(UID) → AES-GCM → LockedKey</code>
+      </div>
+      <div class="tl-arrow"><i class="fas fa-arrow-right"></i></div>
+      <div class="tl-layer" style="border-color:rgba(124,58,237,.25)">
+        <div class="tl-num n3"><i class="fas fa-shield-halved"></i> Layer 3</div>
+        <h4>Public Key Wrap</h4>
+        <p>LockedKey encrypted with recipient's public key.</p>
+        <code>recipientPubKey → AES-GCM → FinalBlob</code>
+      </div>
+    </div>
+    <div class="truth-grid reveal reveal-d4" style="margin-top:28px">
+      <div class="truth-card">
+        <h3><i class="fas fa-arrow-rotate-left" style="color:var(--green)"></i> Decryption (Recipient)</h3>
+        <p><span class="gn">Step 1:</span> Unwrap FinalBlob with your public key → LockedKey.<br><br><span class="gn">Step 2:</span> Unlock LockedKey using sender's UID → Key1.<br><br><span class="gn">Step 3:</span> Decrypt ciphertext with Key1 → plaintext.<br><br><span class="hl">All three must succeed. Miss one = unreadable garbage.</span></p>
+      </div>
+      <div class="truth-card">
+        <h3><i class="fas fa-ban" style="color:var(--red)"></i> What Each Broken Layer Reveals</h3>
+        <p><span class="rd">Break Layer 3:</span> LockedKey — still encrypted with sender's UID. Useless.<br><br><span class="rd">Break Layer 2:</span> Key1 — but message is inside Layer 3 blob. Useless.<br><br><span class="rd">Break Layer 1:</span> Ciphertext — but Key1 is locked behind two layers. Useless.<br><br><span class="hl">Each layer independently useless without the others.</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="sec" style="background:var(--bg2)" id="how">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-microscope"></i> Technical Breakdown</div>
+      <h2 class="sec-title reveal reveal-d1">How It Actually Works</h2>
+      <p class="sec-desc reveal reveal-d2">Step by step. The exact flow when you send a message.</p>
+    </div>
+    <div class="how-steps">
+      <div class="how-step reveal"><div class="how-step-num">1</div><div class="how-step-content"><div class="layer-tag l1"><i class="fas fa-lock"></i> Layer 1</div><h3>Generate Fresh Key</h3><p>Random 256-bit AES-GCM key via <code>crypto.subtle.generateKey()</code>. Exists only in memory.</p></div></div>
+      <div class="how-step reveal reveal-d1"><div class="how-step-num">2</div><div class="how-step-content"><div class="layer-tag l1"><i class="fas fa-lock"></i> Layer 1</div><h3>Encrypt Message</h3><p>Plaintext encrypted with Key1 using <code>AES-GCM</code> + random 12-byte IV.</p></div></div>
+      <div class="how-step reveal reveal-d2"><div class="how-step-num">3</div><div class="how-step-content"><div class="layer-tag l2"><i class="fas fa-key"></i> Layer 2</div><h3>Derive UID Key</h3><p>Sender's UID hashed with <code>SHA-256</code> → 256-bit deterministic key.</p></div></div>
+      <div class="how-step reveal reveal-d3"><div class="how-step-num">4</div><div class="how-step-content"><div class="layer-tag l2"><i class="fas fa-key"></i> Layer 2</div><h3>Lock Key1</h3><p>Key1 exported, encrypted with UID-derived key → <code>LockedKey</code>.</p></div></div>
+      <div class="how-step reveal reveal-d4"><div class="how-step-num">5</div><div class="how-step-content"><div class="layer-tag l3"><i class="fas fa-shield-halved"></i> Layer 3</div><h3>Public Key Wrap</h3><p>LockedKey encrypted with recipient's <code>users/{uid}/pubKey</code> → <code>FinalKey</code>.</p></div></div>
+      <div class="how-step reveal reveal-d5"><div class="how-step-num">6</div><div class="how-step-content"><div class="layer-tag l3"><i class="fas fa-paper-plane"></i> Transmit & Delete</div><h3>Send To Firebase</h3><p>Encrypted blobs pushed. Recipient decrypts. <strong>Server copy deleted within milliseconds.</strong></p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" id="features">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-bolt"></i> Features</div>
+      <h2 class="sec-title reveal reveal-d1">Built For Privacy. Nothing Else.</h2>
+    </div>
+    <div class="feat-grid">
+      <div class="feat-card glass reveal"><div class="feat-icon"><i class="fas fa-cube"></i></div><h3>3-Layer HX-E2E</h3><p>Three independent AES-256-GCM operations per message.</p></div>
+      <div class="feat-card glass reveal reveal-d1"><div class="feat-icon"><i class="fas fa-fingerprint"></i></div><h3>UID-Locked Keys</h3><p>SHA-256 of sender's UID binds each key to the sender.</p></div>
+      <div class="feat-card glass reveal reveal-d2"><div class="feat-icon"><i class="fas fa-key"></i></div><h3>Per-Message Fresh Key</h3><p>Brand new 256-bit key every message. Isolated compromise.</p></div>
+      <div class="feat-card glass reveal"><div class="feat-icon"><i class="fas fa-user-hidden"></i></div><h3>No Phone Number</h3><p>Username-based. No SIM. No carrier metadata.</p></div>
+      <div class="feat-card glass reveal reveal-d1"><div class="feat-icon"><i class="fas fa-eye-slash"></i></div><h3>Zero Data Collection</h3><p>No analytics. No tracking. No logs. No metadata.</p></div>
+      <div class="feat-card glass reveal reveal-d2"><div class="feat-icon"><i class="fas fa-code"></i></div><h3>Open Source</h3><p>Full source on GitHub. Audit everything. No backdoors.</p></div>
+      <div class="feat-card glass reveal"><div class="feat-icon"><i class="fas fa-shield-halved"></i></div><h3>XSS Protection</h3><p>DOMPurify sanitizes all input. Rate limiting. File validation.</p></div>
+      <div class="feat-card glass reveal reveal-d1"><div class="feat-icon"><i class="fas fa-file-shield"></i></div><h3>File Transfer</h3><p>Images and documents through encrypted channel.</p></div>
+      <div class="feat-card glass reveal reveal-d2"><div class="feat-icon"><i class="fas fa-hard-drive"></i></div><h3>Local Cache</h3><p>IndexedDB cache. Server down → you keep history.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="sec" style="background:var(--bg2)" id="compare">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-scale-balanced"></i> Comparison</div>
+      <h2 class="sec-title reveal reveal-d1">How We Compare.</h2>
+      <p class="sec-desc reveal reveal-d2">Same crypto primitives. Different design philosophy. Honest tradeoffs.</p>
+    </div>
+    <div class="comp-table-wrap reveal reveal-d3">
+      <table class="comp-table">
+        <thead><tr><th>Feature</th><th class="app-col hgc">HyperGhostChat</th><th class="app-col">Signal</th><th class="app-col">WhatsApp</th><th class="app-col">Telegram</th><th class="app-col">Threema</th></tr></thead>
+        <tbody>
+          <tr class="hgc-row"><td>E2E Encryption</td><td class="app-col"><i class="fas fa-check check"></i> AES-256 x3</td><td class="app-col"><i class="fas fa-check check"></i> Signal Protocol</td><td class="app-col"><i class="fas fa-check check"></i> Signal Protocol</td><td class="app-col"><i class="fas fa-check check"></i> MTProto 2.0</td><td class="app-col"><i class="fas fa-check check"></i> NaCl</td></tr>
+          <tr><td>Encryption Layers</td><td class="app-col"><i class="fas fa-check check"></i> 3</td><td class="app-col"><i class="fas fa-check check"></i> 1</td><td class="app-col"><i class="fas fa-check check"></i> 1</td><td class="app-col"><i class="fas fa-check check"></i> 1</td><td class="app-col"><i class="fas fa-check check"></i> 1</td></tr>
+          <tr class="hgc-row"><td>UID-Locked Layer</td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td></tr>
+          <tr><td>Phone Required</td><td class="app-col"><i class="fas fa-check check"></i> No</td><td class="app-col"><i class="fas fa-cross cross"></i> Yes</td><td class="app-col"><i class="fas fa-cross cross"></i> Yes</td><td class="app-col"><i class="fas fa-cross cross"></i> Yes</td><td class="app-col"><i class="fas fa-check check"></i> No</td></tr>
+          <tr class="hgc-row"><td>Zero Plaintext</td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-check check"></i></td></tr>
+          <tr><td>Self-Hostable</td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td></tr>
+          <tr class="hgc-row"><td>Open Source</td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-check check"></i> Client</td><td class="app-col"><i class="fas fa-check check"></i></td></tr>
+          <tr><td>Group Chats</td><td class="app-col"><i class="fas fa-cross cross"></i></td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-check check"></i></td><td class="app-col"><i class="fas fa-check check"></i></td></tr>
+          <tr class="hgc-row"><td>Data Collection</td><td class="app-col"><i class="fas fa-check check"></i> Zero</td><td class="app-col"><i class="fas fa-check check"></i> Minimal</td><td class="app-col"><i class="fas fa-cross cross"></i> Extensive</td><td class="app-col"><i class="fas fa-cross cross"></i> Extensive</td><td class="app-col"><i class="fas fa-check check"></i> Minimal</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="reveal reveal-d4" style="margin-top:18px;font-size:11px;color:var(--muted);max-width:700px;margin-left:auto;margin-right:auto;line-height:1.7;text-align:center"><i class="fas fa-circle-info" style="color:var(--purple2)"></i> <strong>Honest:</strong> We lead on privacy architecture (3 layers, zero data, no phone). Signal leads on post-compromise security (Double Ratchet). WhatsApp harvests data. Telegram's E2E is optional. Threema is paid with closed server.</p>
+    <div class="ranks-grid reveal reveal-d5">
+      <div class="rank-card first"><div class="rank-num">10</div><div class="rank-name">HyperGhostChat</div><div class="rank-score" style="color:var(--green)">10/10</div><span class="rank-badge" style="background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)">#1 Privacy</span></div>
+      <div class="rank-card"><div class="rank-num" style="color:var(--blue)">9</div><div class="rank-name">Signal</div><div class="rank-score" style="color:var(--green)">9/10</div><span class="rank-badge" style="background:rgba(59,130,246,.1);color:var(--blue);border:1px solid rgba(59,130,246,.2)">#2 Overall</span></div>
+      <div class="rank-card"><div class="rank-num" style="color:var(--cyan)">8</div><div class="rank-name">Threema</div><div class="rank-score" style="color:var(--cyan)">8/10</div><span class="rank-badge" style="background:rgba(6,182,212,.1);color:var(--cyan);border:1px solid rgba(6,182,212,.2)">#3 Paid</span></div>
+      <div class="rank-card"><div class="rank-num" style="color:var(--orange)">6</div><div class="rank-name">Telegram</div><div class="rank-score" style="color:var(--orange)">6/10</div><span class="rank-badge" style="background:rgba(245,158,11,.1);color:var(--orange);border:1px solid rgba(245,158,11,.2)">#4 Optional E2E</span></div>
+      <div class="rank-card"><div class="rank-num" style="color:var(--red)">5</div><div class="rank-name">WhatsApp</div><div class="rank-score" style="color:var(--red)">5/10</div><span class="rank-badge" style="background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)">#5 Data Harvest</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="sec" id="download">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-download"></i> Download</div>
+      <h2 class="sec-title reveal reveal-d1">Available Everywhere. Soon.</h2>
+    </div>
+    <div class="download-grid">
+      <div class="download-card glass reveal" onclick="alert('Coming Soon — Android app under active development!')"><span class="soon-badge">Coming Soon</span><i class="fab fa-android"></i><h4>Android</h4><p>Google Play</p></div>
+      <div class="download-card glass reveal reveal-d1" onclick="alert('Coming Soon — iOS after Android!')"><span class="soon-badge">Coming Soon</span><i class="fab fa-apple"></i><h4>iPhone & iPad</h4><p>App Store</p></div>
+      <div class="download-card glass reveal reveal-d2" onclick="alert('Coming Soon — Windows desktop!')"><span class="soon-badge">Coming Soon</span><i class="fab fa-windows"></i><h4>Windows</h4><p>.exe Installer</p></div>
+      <div class="download-card glass reveal reveal-d3" onclick="alert('Coming Soon — macOS!')"><span class="soon-badge">Coming Soon</span><i class="fab fa-apple"></i><h4>Mac</h4><p>.dmg Installer</p></div>
+      <div class="download-card glass reveal reveal-d4" onclick="alert('Coming Soon — Linux!')"><span class="soon-badge">Coming Soon</span><i class="fab fa-linux"></i><h4>Linux</h4><p>.AppImage</p></div>
+    </div>
+    <div style="text-align:center;margin-top:44px" class="reveal">
+      <a class="btn-primary" href="https://hypersenseindia.github.io/HYPERGHOSTCHAT//" target="_blank" rel="noopener" style="font-size:15px;padding:16px 38px"><i class="fas fa-rocket"></i> Launch Web App</a>
+    </div>
+  </div>
+</section>
+
+<!-- OPEN SOURCE -->
+<section class="sec" style="background:rgba(255,255,255,.01)" id="opensource">
+  <div class="container">
+    <div class="os-card glass-strong reveal">
+      <div class="os-icon"><i class="fab fa-github"></i></div>
+      <div class="os-content">
+        <h3>100% Open Source — Audit Everything</h3>
+        <p>Every line is public on GitHub. Read the encryption. Verify the claims. Check for backdoors. The math is the proof.</p>
+        <a class="btn-outline" href="https://github.com/aswinxks/HYPERGHOSTCHATAPP-" target="_blank" rel="noopener"><i class="fab fa-github"></i> View Source on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="sec" style="background:var(--bg2)" id="about">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-building"></i> About Us</div>
+      <h2 class="sec-title reveal reveal-d1">HyperSense India<br>Technologies</h2>
+    </div>
+    <div class="about-grid">
+      <div class="about-text reveal">
+        <p><strong>HyperSense India Technologies</strong> is a technology company focused on privacy-first software. We believe encryption should be the default, not an option. Your messages belong to you — not to servers, not to companies, not to governments.</p>
+        <p>HyperGhostChat was born from frustration with existing messengers that require phone numbers, collect metadata, or store plaintext backups while claiming to be "private." We built something fundamentally different — a messenger where the server <strong>literally cannot read your messages</strong>, even with full database admin access.</p>
+        <p>The 3-layer HX-E2E encryption isn't marketing. It's three independent AES-256-GCM operations per message. Verify it yourself — <strong>the entire codebase is open source</strong>.</p>
+        <p>Based in India. Built for the world.</p>
+        <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+          <a class="btn-outline" href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener"><i class="fab fa-instagram"></i> @hypersenseindia</a>
+          <a class="btn-outline" href="https://discord.gg/9kCamY9ax3" target="_blank" rel="noopener"><i class="fab fa-discord"></i> Discord Server</a>
+        </div>
+      </div>
+      <div class="dev-card glass-strong reveal reveal-d2">
+        <div class="dev-avatar"><i class="fas fa-ghost"></i></div>
+        <h3>@ASWINXKS</h3>
+        <div class="dev-role">Founder & Lead Developer</div>
+        <div class="dev-org">HyperSense India Technologies</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Full-stack developer. Privacy activist. Creator of HyperGhostChat.</p>
+        <div class="dev-socials">
+          <a href="https://www.instagram.com/aswinxks/" target="_blank" rel="noopener" title="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="https://github.com/aswinxks" target="_blank" rel="noopener" title="GitHub"><i class="fab fa-github"></i></a>
+          <a href="https://discord.com/users/hydraxff" target="_blank" rel="noopener" title="Discord"><i class="fab fa-discord"></i></a>
+          <a href="https://aswinxks.github.io/aswin-shibu-portfolio/" target="_blank" rel="noopener" title="Portfolio"><i class="fas fa-globe"></i></a>
+        </div>
+        <div class="dev-skills">
+          <span class="dev-skill">JavaScript</span>
+          <span class="dev-skill">Firebase</span>
+          <span class="dev-skill">Web Crypto API</span>
+          <span class="dev-skill">AES-256-GCM</span>
+          <span class="dev-skill">E2E Encryption</span>
+          <span class="dev-skill">React</span>
+          <span class="dev-skill">Node.js</span>
+        </div>
+        <div style="margin-top:20px">
+          <a class="btn-outline" href="https://aswinxks.github.io/aswin-shibu-portfolio/" target="_blank" rel="noopener" style="font-size:12px;padding:10px 20px"><i class="fas fa-arrow-up-right-from-square"></i> View Full Portfolio</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DONATE -->
+<section class="sec" id="donate">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-heart"></i> Support The Project</div>
+      <h2 class="sec-title reveal reveal-d1">Donate</h2>
+      <p class="sec-desc reveal reveal-d2">HyperGhostChat is free and always will be. Support the developer if you find it valuable.</p>
+    </div>
+    <div class="donate-box reveal reveal-d2">
+      <div class="donate-inner">
+        <h3>ASWIN SHIBU</h3>
+        <p class="donate-sub">DONATIONS' FOR DEVELOPER HARDWORKS!</p>
+        <div class="donate-qr-wrap">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa=aswinpfi-2%40oksbi&cu=INR&pn=ASWIN%20SHIBU%20%28MASTER%29&tn=DONATIONS%27%20FOR%20DEVELOPER%20HARDWORKS%21%21" alt="UPI QR Code" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\'padding:30px;color:#888;\'><i class=\'fas fa-qrcode\' style=\'font-size:40px;display:block;margin-bottom:6px;\'></i>QR not loaded<br><span style=\'font-size:12px;\'>Use Pay button below</span></div>'">
+        </div>
+        <div class="donate-row">
+          <span><div class="dlabel">UPI ID</div><div class="dvalue" id="upiId">aswinpfi-2@oksbi</div></span>
+          <button class="donate-copy" onclick="copyUPI()" title="Copy"><i class="fas fa-copy"></i></button>
+        </div>
+        <div class="donate-row">
+          <span><div class="dlabel">Payee</div><div class="dvalue">ASWIN SHIBU (MASTER)</div></span>
+        </div>
+        <div class="donate-row" style="background:#f0f5ff;border-color:#c0d4f0;">
+          <span><div class="dlabel">Note</div><div class="dvalue" style="font-size:11px;">DONATIONS' FOR DEVELOPER HARDWORKS!!</div></span>
+        </div>
+        <a href="upi://pay?pa=aswinpfi-2%40oksbi&cu=INR&pn=ASWIN%20SHIBU%20%28MASTER%29&tn=DONATIONS%27%20FOR%20DEVELOPER%20HARDWORKS%21%21" class="donate-pay-btn"><i class="fas fa-credit-card"></i> Pay Now</a>
+        <div class="donate-note"><i class="fas fa-lock" style="margin-right:4px;"></i> Opens your UPI app</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="sec" style="background:var(--bg2)" id="contact">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-envelope"></i> Contact</div>
+      <h2 class="sec-title reveal reveal-d1">Get In Touch</h2>
+    </div>
+    <div class="contact-grid">
+      <a class="contact-card glass reveal" href="mailto:hydraxhypersense@gmail.com" target="_blank" rel="noopener"><div class="cc-icon"><i class="fas fa-envelope"></i></div><h4>Email</h4><p>Company Email</p><div class="cc-handle">hydraxhypersense@gmail.com</div></a>
+      <a class="contact-card glass reveal reveal-d1" href="https://discord.com/users/hydraxff" target="_blank" rel="noopener"><div class="cc-icon"><i class="fab fa-discord"></i></div><h4>Discord</h4><p>Developer Direct</p><div class="cc-handle">hydraxff</div></a>
+      <a class="contact-card glass reveal reveal-d2" href="https://discord.gg/9kCamY9ax3" target="_blank" rel="noopener"><div class="cc-icon"><i class="fas fa-users"></i></div><h4>Discord Server</h4><p>Community</p><div class="cc-handle">Join Server →</div></a>
+      <a class="contact-card glass reveal" href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener"><div class="cc-icon"><i class="fab fa-instagram"></i></div><h4>Instagram</h4><p>Company</p><div class="cc-handle">@hypersenseindia</div></a>
+      <a class="contact-card glass reveal reveal-d1" href="https://www.instagram.com/aswinxks/" target="_blank" rel="noopener"><div class="cc-icon"><i class="fab fa-instagram"></i></div><h4>Instagram</h4><p>Developer</p><div class="cc-handle">@aswinxks</div></a>
+      <a class="contact-card glass reveal reveal-d2" href="https://github.com/aswinxks" target="_blank" rel="noopener"><div class="cc-icon"><i class="fab fa-github"></i></div><h4>GitHub</h4><p>Source Code</p><div class="cc-handle">aswinxks</div></a>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY POLICY -->
+<section class="sec" id="privacy">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-shield-halved"></i> Privacy Policy</div>
+      <h2 class="sec-title reveal reveal-d1">We Collect Zero Data.</h2>
+    </div>
+    <div class="legal-content reveal reveal-d2">
+      <h2>Data We Collect</h2>
+      <p><strong>Nothing.</strong> We do not collect, store, process, or have access to: your messages (encrypted before leaving your device), your message content or metadata, your IP address, your location, your device information, any analytics or tracking data, any advertising identifiers.</p>
+      <h2>Data Stored On Your Device</h2>
+      <p>Your browser's IndexedDB stores: decrypted messages (only while logged in), your session state. This data exists <strong>only on your device</strong>. We never access it. Clearing browser data removes it completely.</p>
+      <h2>Data Stored On Firebase</h2>
+      <p>Firebase stores only: your username and Firebase UID (public), your recovery email (secure, never shared), your public encryption key (required for E2E), encrypted message blobs (unreadable without your device). <strong>None of this can be used to read your messages.</strong></p>
+      <h2>Third Parties</h2>
+      <p><strong>Firebase Authentication</strong> — account management only. <strong>Firebase Realtime Database</strong> — encrypted message relay. Neither has access to plaintext messages.</p>
+      <h2>Your Rights</h2>
+      <p>Delete your account at any time — removes all your data. Export your messages at any time (JSON). Contact us with any questions.</p>
+      <h2>Contact</h2>
+      <p>Privacy questions? <a href="mailto:hydraxhypersense@gmail.com">hydraxhypersense@gmail.com</a></p>
+      <p style="margin-top:36px;color:var(--muted);font-size:11px">Last updated: January 2025</p>
+    </div>
+  </div>
+</section>
+
+<!-- TERMS -->
+<section class="sec" style="background:var(--bg2)" id="terms">
+  <div class="container">
+    <div class="sec-header">
+      <div class="sec-label reveal"><i class="fas fa-file-contract"></i> Terms & Conditions</div>
+      <h2 class="sec-title reveal reveal-d1">Terms of Service</h2>
+    </div>
+    <div class="legal-content reveal reveal-d2">
+      <h2>Acceptance</h2>
+      <p>By using HyperGhostChat, you agree to these terms.</p>
+      <h2>Service Description</h2>
+      <p>HyperGhostChat is an end-to-end encrypted messaging service. We provide software and infrastructure. <strong>We do not have access to your messages.</strong></p>
+      <h2>Account Requirements</h2>
+      <p>You must be at least 13 years old. Choose a unique username. Provide a valid email for recovery. Keep your password secure.</p>
+      <h2>Acceptable Use</h2>
+      <p>You agree NOT to: use the service for illegal activities; harass, threaten, or abuse other users; share illegal content; attempt to bypass security; spam other users; reverse engineer or attack the service.</p>
+      <h2>Content Monitoring</h2>
+      <p>We implement <strong>automated client-side content detection</strong> that flags suspicious messages for admin review. Flagged messages remain encrypted — the flag contains only a category, not content.</p>
+      <h2>Account Suspension</h2>
+      <p>We reserve the right to suspend accounts that violate these terms.</p>
+      <h2>Encryption Limitations</h2>
+      <p>While we implement strong 3-layer encryption, no system is perfect. We make no warranty that messages are absolutely unbreakable.</p>
+      <h2>Service Availability</h2>
+      <p>Provided "as is" without warranty. Not liable for damages from interruption.</p>
+      <h2>Data Deletion</h2>
+      <p>Delete your account anytime — removes profile, contacts, keys. Messages in others' caches remain until they delete them.</p>
+      <h2>Donations</h2>
+      <p>Voluntary and non-refundable. No special access or privileges granted.</p>
+      <h2>Changes</h2>
+      <p>We may update these terms. Continued use means acceptance.</p>
+      <h2>Contact</h2>
+      <p>Questions? <a href="mailto:hydraxhypersense@gmail.com">hydraxhypersense@gmail.com</a></p>
+      <p style="margin-top:36px;color:var(--muted);font-size:11px">Last updated: January 2025</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff"><i class="fas fa-ghost"></i></div>
+          <span style="font-weight:800;font-size:14px">HyperGhostChat</span>
+        </div>
+        <p>3-Layer E2E encrypted messaging by HyperSense India Technologies. No data collection. Open source. Mathematics over marketing.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="https://hypersenseindia.github.io/HYPERGHOSTCHAT//" target="_blank" rel="noopener">Launch App</a>
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/aswinxks/HYPERGHOSTCHATAPP-" target="_blank" rel="noopener">GitHub</a>
+        <a href="#compare">Compare</a>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <a href="#about">About Us</a>
+        <a href="#contact">Contact</a>
+        <a href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://discord.gg/9kCamY9ax3" target="_blank" rel="noopener">Discord</a>
+        <a href="#donate">Donate</a>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <a href="#privacy">Privacy Policy</a>
+        <a href="#terms">Terms & Conditions</a>
+        <a href="mailto:hydraxhypersense@gmail.com">Report Abuse</a>
+        <a href="https://aswinxks.github.io/aswin-shibu-portfolio/" target="_blank" rel="noopener">Developer Portfolio</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 HyperSense India Technologies. All rights reserved.</p>
+      <div class="footer-socials">
+        <a href="https://www.instagram.com/hypersenseindia/" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>
+        <a href="https://www.instagram.com/aswinxks/" target="_blank" rel="noopener"><i class="fab fa-instagram"></i></a>
+        <a href="https://github.com/aswinxks" target="_blank" rel="noopener"><i class="fab fa-github"></i></a>
+        <a href="https://discord.com/users/hydraxff" target="_blank" rel="noopener"><i class="fab fa-discord"></i></a>
+        <a href="https://discord.gg/9kCamY9ax3" target="_blank" rel="noopener"><i class="fas fa-users"></i></a>
+        <a href="mailto:hydraxhypersense@gmail.com"><i class="fas fa-envelope"></i></a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-msg" id="toastEl"></div>
+
+<script>
+function toggleMobile(){document.getElementById('mobileNav').classList.toggle('show')}
+window.addEventListener('scroll',function(){document.getElementById('mainNav').classList.toggle('scrolled',window.pageYOffset>50)},{passive:true});
+function handleReveal(){
+  document.querySelectorAll('.reveal:not(.visible)').forEach(function(el){if(el.getBoundingClientRect().top<window.innerHeight*.88)el.classList.add('visible')});
+  document.querySelectorAll('.how-step').forEach(function(s){if(s.getBoundingClientRect().top<window.innerHeight*.6)s.classList.add('active')});
+}
+window.addEventListener('scroll',handleReveal,{passive:true});
+window.addEventListener('DOMContentLoaded',function(){
+  handleReveal();
+  setTimeout(function(){document.querySelectorAll('.hero .reveal').forEach(function(el){el.classList.add('visible')})},100);
+  // Prove chat animation
+  var proved=false;
+  function animProve(){
+    if(proved)return;
+    var pc=document.getElementById('proveChat');
+    if(!pc)return;
+    if(pc.getBoundingClientRect().top<window.innerHeight*.85){
+      proved=true;
+      var ms=pc.querySelectorAll('.mock-msg,.mock-encrypt');
+      ms.forEach(function(m){m.style.opacity='0';m.style.transform='translateY(10px)'});
+      ms.forEach(function(m,i){setTimeout(function(){m.style.transition='all .4s ease';m.style.opacity='1';m.style.transform='translateY(0)'},i*700)});
+    }
+  }
+  window.addEventListener('scroll',animProve,{passive:true});
+  document.querySelectorAll('.mobile-nav a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mobileNav').classList.remove('show')})});
+});
+
+// LIVE PROOF - Web Crypto API Demo
+var lpKey=null,lpEncrypted=null,lpIv=null;
+async function lpGenerate(){
+  try{
+    lpKey=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+    var raw=await crypto.subtle.exportKey('raw',lpKey);
+    var b64=btoa(String.fromCharCode.apply(null,new Uint8Array(raw)));
+    var short=b64.substring(0,20)+'...'+b64.substring(b64.length-12);
+    document.getElementById('lpKeyResult').textContent=short;
+    document.getElementById('lpKeyResult').classList.add('has-val');
+    document.getElementById('lpGenBtn').classList.add('done');
+    document.getElementById('lpGenBtn').textContent='✓ Generated';
+    document.getElementById('lpEncBtn').disabled=false;
+  }catch(e){document.getElementById('lpKeyResult').textContent='Error: '+e.message}
+}
+async function lpEncrypt(){
+  try{
+    lpIv=crypto.getRandomValues(new Uint8Array(12));
+    var encoded=new TextEncoder().encode('Hello');
+    var ct=await crypto.subtle.encrypt({name:'AES-GCM',iv:lpIv},lpKey,encoded);
+    var combo=new Uint8Array(lpIv.length+ct.byteLength);
+    combo.set(lpIv);combo.set(new Uint8Array(ct),lpIv.length);
+    lpEncrypted=btoa(String.fromCharCode.apply(null,combo));
+    var short=lpEncrypted.substring(0,20)+'...'+lpEncrypted.substring(lpEncrypted.length-12);
+    document.getElementById('lpEncResult').textContent=short;
+    document.getElementById('lpEncResult').classList.add('has-val');
+    document.getElementById('lpEncBtn').classList.add('done');
+    document.getElementById('lpEncBtn').textContent='✓ Encrypted';
+    document.getElementById('lpDecBtn').disabled=false;
+  }catch(e){document.getElementById('lpEncResult').textContent='Error: '+e.message}
+}
+async function lpDecrypt(){
+  try{
+    var comboStr=atob(lpEncrypted);
+    var combo=new Uint8Array(comboStr.length);
+    for(var i=0;i<comboStr.length;i++)combo[i]=comboStr.charCodeAt(i);
+    var iv=combo.slice(0,12);
+    var ct=combo.slice(12);
+    var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},lpKey,ct);
+    var plaintext=new TextDecoder().decode(pt);
+    document.getElementById('lpDecResult').textContent=plaintext;
+    document.getElementById('lpDecResult').classList.add('has-val');
+    document.getElementById('lpDecBtn').classList.add('done');
+    document.getElementById('lpDecBtn').textContent='✓ Decrypted!';
+  }catch(e){document.getElementById('lpDecResult').textContent='Decrypt failed — key mismatch'}
+}
+
+// COPY UPI
+function copyUPI(){
+  var upi=document.getElementById('upiId').innerText;
+  navigator.clipboard.writeText(upi).then(function(){showToast('✅ UPI ID copied!')}).catch(function(){
+    var el=document.getElementById('upiId');var r=document.createRange();r.selectNode(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r);document.execCommand('copy');showToast('✅ UPI ID copied!');
+  });
+}
+function showToast(msg){var t=document.getElementById('toastEl');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2500)}
+</script>
+</body>
+</html>
